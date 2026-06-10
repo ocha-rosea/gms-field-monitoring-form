@@ -93,6 +93,7 @@ main{max-width:880px;margin:0 auto;padding:8px 12px 95px;background:#fff}
 .fld textarea{min-height:74px;resize:vertical}
 .fld input:focus,.fld select:focus,.fld textarea:focus{outline:2px solid var(--un);border-color:var(--un)}
 .fld .filled{background:var(--green-bg)}
+.fld input.ro,.fld textarea.ro,.fld select.ro{background:var(--g-bg);color:var(--g-dark);cursor:not-allowed;opacity:1}
 .fld.err input,.fld.err select,.fld.err textarea{border-color:var(--red);background:var(--red-bg)}
 .fld.err>label{color:var(--red-aaa)}
 .fld details{margin-top:5px;font-size:13px;color:var(--gray)}
@@ -418,7 +419,7 @@ const CATALOG=[
   {h:'1.1.7 Justification for visit',fields:[
     F('fld_visitJustification','Justification','textarea',{ph:'Regular mid-term/final per M&E workplan, or ad hoc'}),
   ]},
-  {h:'1.2 Project information',desc:'Pre-filled from GMS. Edit only if incorrect.',fields:[
+  {h:'1.2 Project information',desc:'Pre-filled from GMS and locked. If anything here is wrong, correct it in OneGMS and export the template again.',fields:[
     F('fld_chfProjectCode','Project number','text',{pre:1}),
     F('fld_projectTitle','Project title','textarea',{pre:1}),
     F('fld_projectLocations','Project location(s)','textarea',{pre:1}),
@@ -709,8 +710,13 @@ function registerInput(container,{key,sheet,ref,type,label,options,ph,pre,rubric
     input.value=cur;
   }
   input.dataset.key=key;
-  input.addEventListener('input',()=>{state[key]=input.value;wrap.classList.remove('err');input.classList.toggle('filled',input.value!=='');onStateChange()});
-  input.classList.toggle('filled',String(cur)!=='');
+  if(pre){ // GMS pre-filled fields are locked; corrections belong in OneGMS before export
+    if(input.tagName==='SELECT')input.disabled=true;else input.readOnly=true;
+    input.classList.add('ro');
+  }else{
+    input.addEventListener('input',()=>{state[key]=input.value;wrap.classList.remove('err');input.classList.toggle('filled',input.value!=='');onStateChange()});
+    input.classList.toggle('filled',String(cur)!=='');
+  }
   if(type==='score'&&rubric!==false){
     const row=el('div',{class:'score-row'});
     row.appendChild(input);
