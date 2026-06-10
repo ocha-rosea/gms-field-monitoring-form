@@ -30,9 +30,13 @@ Hosted on GitHub Pages from the `main` branch of [ocha-rosea/gms-field-monitorin
 
 ## Branding
 
-Styled with the official OCHA brand palette (UN Blue `#009edb` for all blues; flat design, no gradients) and the OCHA primary typeface **Roboto** (loaded from Google Fonts when online; falls back to Arial offline, per the brand guideline). The header shows the ESAHF wordmark and the footer the OCHA logo, both from `assets/` (swap the wordmark to rebrand for another fund). The landing page explains the workflow in four steps, illustrated with [OCHA Humanitarian Icons](https://un-ocha.github.io/humanitarian-icons/) stored under `assets/icons/`.
+Styled with the official OCHA brand palette (UN Blue `#009edb` for all blues; flat design, no gradients) and the OCHA primary typeface **Roboto**, self-hosted under `assets/fonts/` so the app makes no third-party requests (falls back to Arial if the fonts cannot load, per the brand guideline). The header shows the ESAHF wordmark and the footer the OCHA logo, both from `assets/` (swap the wordmark to rebrand for another fund). The landing page explains the workflow in four steps, illustrated with [OCHA Humanitarian Icons](https://un-ocha.github.io/humanitarian-icons/) stored under `assets/icons/`.
 
 The mandatory-field list is the `REQUIRED` set near the top of the script in `index.html`; add or remove `fld_*` names there to change what is enforced.
+
+## Security and privacy
+
+All parsing, form filling and Excel generation happen in the browser; the app has no server, no analytics and no cookies. A Content-Security-Policy meta tag makes this browser-enforced: only same-origin resources may load and outbound connections to any other origin are refused, so even a future bug or a malicious workbook could not send data anywhere. Drafts are stored unencrypted in the browser's localStorage on the device; on shared computers, press Discard draft when done. The only network traffic is serving the page itself from GitHub Pages and the user's own upload to OneGMS.
 
 ## Notes / limits
 

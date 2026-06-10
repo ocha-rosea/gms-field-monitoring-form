@@ -4,10 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>GMS Field Monitoring Form</title>
-<!-- OCHA primary typeface: Roboto (falls back to Arial when offline, per brand guideline) -->
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+<!-- Browser-enforced guarantee that no data can be sent anywhere:
+     only same-origin resources may load, and no outbound connections beyond the page's own origin are possible. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'none'">
+<!-- OCHA primary typeface: Roboto, self-hosted (no third-party requests; falls back to Arial if unavailable) -->
+<link rel="stylesheet" href="assets/fonts/fonts.css">
 <style>
 /* OCHA brand palette — UN Blue primary, flat design, no gradients */
 :root{
