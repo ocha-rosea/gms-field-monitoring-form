@@ -1,0 +1,8 @@
+# GMS exports contain project & contact data — never publish
+Monitoring-*.xlsx
+*.xlsx
+# drafts exported from the form
+*-draft.json
+# local tooling
+.claude/
+test-output.*
