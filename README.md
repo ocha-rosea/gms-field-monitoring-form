@@ -35,7 +35,11 @@ Hosted on GitHub Pages from the `main` branch of [ocha-rosea/gms-field-monitorin
 
 Styled with the official OCHA brand palette (UN Blue `#009edb` for all blues; flat design, no gradients) and the OCHA primary typeface **Roboto**, self-hosted under `assets/fonts/` so the app makes no third-party requests (falls back to Arial if the fonts cannot load, per the brand guideline). The header shows the ESAHF wordmark and the footer the OCHA logo, both from `assets/` (swap the wordmark to rebrand for another fund). The landing page explains the workflow in four steps, illustrated with [OCHA Humanitarian Icons](https://un-ocha.github.io/humanitarian-icons/) stored under `assets/icons/`.
 
-The mandatory-field list is the `REQUIRED` set near the top of the script in `index.html`; add or remove `fld_*` names there to change what is enforced.
+The mandatory-field list is the `REQUIRED` set near the top of the script; add or remove `fld_*` names there to change what is enforced.
+
+## Keeping in sync with the GMS template
+
+The app is built around the current OneGMS FSM template. It adapts to whatever comes from the file (field values via the `fld_*` named ranges, the dropdown options, and the indicator and activity rows), so changes that only move cells around are handled automatically. But the set of fields, how they are grouped into the step-by-step sections, and the mandatory-field list are defined in the app's field catalog (`CATALOG` and `REQUIRED`). So **if OneGMS changes the template structure** — adding, removing or renaming fields or sections — **the app may need a matching update** before those changes appear. Test the app against any new template version before using it in the field, and update the catalog if needed.
 
 ## Offline use
 
