@@ -1,7 +1,7 @@
-# GMS Field Monitoring Form: architecture and implementation plan
+# GMS Field Monitoring Form: design and architecture
 
-This document describes the target architecture for the multi-location, records-based
-version of the tool, and the staged plan to get there from the current single-file app.
+This is the technical design and implementation reference. For the user-facing overview see
+[README.md](README.md).
 
 ## 1. Goal
 
@@ -258,3 +258,58 @@ Each stage is shippable and verified before the next.
   indicators are percentages.
 - **iOS storage eviction**: mitigated by install-as-PWA, `storage.persist()`, and backups.
 - **Pilot upload** to OneGMS remains the outstanding real-world validation.
+
+## 11. Implementation notes
+
+### Hosting and deployment
+
+Hosted on GitHub Pages from the `main` branch of
+[ocha-rosea/gms-field-monitoring-form](https://github.com/ocha-rosea/gms-field-monitoring-form);
+pushing to `main` redeploys automatically. The `.gitignore` excludes `Monitoring-*.xlsx` and
+exported drafts so project data is never committed.
+
+### Field catalog
+
+The set of fields, their grouping into the step-by-step sections, and the mandatory list are
+defined in `CATALOG` and the `REQUIRED` set in `js/app.js`. Values, dropdown options, and the
+indicator and activity rows are read live from the loaded template via the `fld_*` named
+ranges, so cell moves are handled automatically; structural template changes (new, removed or
+renamed fields or sections) require updating the catalog. Add or remove `fld_*` names in
+`REQUIRED` to change what is enforced.
+
+### Branding
+
+Official OCHA brand palette (UN Blue `#009edb` for all blues; flat design, no gradients) and
+the OCHA primary typeface **Roboto**, self-hosted under `assets/fonts/` so the app makes no
+third-party requests (falls back to Arial). The header shows the ESAHF wordmark and the footer
+the OCHA logo, both from `assets/` (swap the wordmark to rebrand). Step icons are
+[OCHA Humanitarian Icons](https://un-ocha.github.io/humanitarian-icons/) under `assets/icons/`.
+
+### Offline (service worker)
+
+`sw.js` precaches the app on first visit. The page is fetched **network-first** (online users
+get the latest deploy; offline users get the cached copy); static assets use
+**stale-while-revalidate**. Bump `CACHE` in `sw.js` when the precached file list changes; the
+new worker deletes older caches on activation, and the page reloads once when it takes control
+so updates apply automatically.
+
+### Security enforcement
+
+A Content-Security-Policy meta tag (`default-src 'none'`, `connect-src 'self'`) makes the
+no-exfiltration guarantee browser-enforced: only same-origin resources load and no outbound
+connection to any other origin is possible. Optional field-pack encryption uses Web Crypto
+(PBKDF2 150k/SHA-256 + AES-GCM-256), entirely on-device.
+
+### Handwriting
+
+No recognition engine is bundled (a capable offline model is tens of MB and unreliable on
+field handwriting) and a cloud recognizer is blocked by the CSP. The browser on-device
+Handwriting Recognition API (`navigator.createHandwritingRecognizer`) is unsupported on
+Windows desktop browsers, so each text field's ✎ marker (shown only on pen/touch devices)
+gives platform-specific guidance to the OS handwriting input instead.
+
+### Misc
+
+- Text answers are written as inline strings (standard OOXML); Excel normalises them on first save.
+- Browser requirement: any 2023+ Chrome/Edge/Firefox/Safari (uses native `CompressionStream`).
+- The app warns if a workbook without `fld_*` named ranges is loaded.
