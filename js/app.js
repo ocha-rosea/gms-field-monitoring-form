@@ -945,6 +945,22 @@ async function addLocation(){
 function backFromForm(){flushDraft();if(CURPROJ&&CURPROJ.mode==='multi')enterProjectView();else showHome();}
 function u8b64(u8){let s='';const C=0x8000;for(let i=0;i<u8.length;i+=C)s+=String.fromCharCode.apply(null,u8.subarray(i,i+C));return btoa(s);}
 function b64u8(b){const s=atob(b);const u=new Uint8Array(s.length);for(let i=0;i<s.length;i++)u[i]=s.charCodeAt(i);return u;}
+// optional passphrase encryption for shared files (offline, Web Crypto, PBKDF2 + AES-GCM)
+async function deriveKey(pass,salt){
+  const km=await crypto.subtle.importKey('raw',new TextEncoder().encode(pass),'PBKDF2',false,['deriveKey']);
+  return crypto.subtle.deriveKey({name:'PBKDF2',salt,iterations:150000,hash:'SHA-256'},km,{name:'AES-GCM',length:256},false,['encrypt','decrypt']);
+}
+async function encryptObj(obj,pass){
+  const salt=crypto.getRandomValues(new Uint8Array(16)),iv=crypto.getRandomValues(new Uint8Array(12));
+  const key=await deriveKey(pass,salt);
+  const ct=new Uint8Array(await crypto.subtle.encrypt({name:'AES-GCM',iv},key,new TextEncoder().encode(JSON.stringify(obj))));
+  return {app:'gms-field-monitoring-form',kind:'fieldpack-enc',v:1,salt:u8b64(salt),iv:u8b64(iv),ct:u8b64(ct)};
+}
+async function decryptObj(w,pass){
+  const key=await deriveKey(pass,b64u8(w.salt));
+  const pt=await crypto.subtle.decrypt({name:'AES-GCM',iv:b64u8(w.iv)},key,b64u8(w.ct));
+  return JSON.parse(new TextDecoder().decode(pt));
+}
 async function exportFieldPack(){
   if(!CURPROJ){notice('warn','Open a report first.');return;}
   try{
@@ -954,14 +970,22 @@ async function exportFieldPack(){
       filename:CURPROJ.filename,mode:CURPROJ.mode,templateB64:u8b64(CURPROJ.templateBytes),
       locations:locs.map(l=>({id:l.id,projectKey:l.projectKey,locationName:l.locationName,formState:l.formState,
         status:l.status,planned:l.planned,author:l.author,updatedAt:l.updatedAt}))};
-    const blob=new Blob([JSON.stringify(bundle)],{type:'application/json'});
+    const pass=(prompt('Optional passphrase to encrypt this field pack.\nLeave blank for no encryption. Share the passphrase with your team through a separate channel.')||'').trim();
+    let payload=bundle,enc='';
+    if(pass){payload=await encryptObj(bundle,pass);enc='-encrypted';}
+    const blob=new Blob([JSON.stringify(payload)],{type:'application/json'});
     const safe=(CURPROJ.projectCode||'report').replace(/[^\w.-]+/g,'_');
-    const a=el('a',{href:URL.createObjectURL(blob),download:'fieldpack-'+safe+'.json'});
+    const a=el('a',{href:URL.createObjectURL(blob),download:'fieldpack-'+safe+enc+'.json'});
     document.body.appendChild(a);a.click();a.remove();
-    notice('ok','Field pack exported. Share it through internal channels only.');
+    notice('ok','Field pack exported'+(pass?' (encrypted)':'')+'. Share it through internal channels only.');
   }catch(e){notice('warn','Export failed: '+encXml(e.message),true);console.error(e);}
 }
 async function importFieldPack(data){
+  if(data&&data.kind==='fieldpack-enc'){
+    const pass=(prompt('This field pack is encrypted. Enter the passphrase:')||'').trim();
+    if(!pass)throw new Error('Passphrase required');
+    try{data=await decryptObj(data,pass);}catch(e){throw new Error('Wrong passphrase or corrupted file');}
+  }
   if(!data||data.kind!=='fieldpack')throw new Error('Not a field pack file');
   let proj=await Store.getProject(data.projectKey);
   if(!proj){
@@ -1149,5 +1173,5 @@ if('serviceWorker' in navigator&&location.protocol!=='file:')
 window.__gms={WB,get state(){return state},set state(s){state=s},loadBuffer:async(buf,name)=>{await parseXlsx(buf,name);CURPROJ=null;CURLOC=null;state={};renderForm()},
   collectEdits,generate,setVal:(k,v)=>{state[k]=v;onStateChange()},inputs:()=>inputsIndex,cellV,namedV,
   openProject,showHome,renderRecords,loadFileObj:loadFile,showProject,enterProjectView,addLocation,openLocation,
-  exportFieldPack,importFieldPack,consolidateAndReview,
+  exportFieldPack,importFieldPack,consolidateAndReview,encryptObj,decryptObj,
   get curproj(){return CURPROJ},get curloc(){return CURLOC}};
