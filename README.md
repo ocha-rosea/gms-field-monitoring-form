@@ -26,13 +26,13 @@ The app opens on a **records home** listing your saved reports with their status
 
 When starting a report you choose **one location** or **multiple locations**. A multiple-location report holds a list of locations (each can be planned up front), and different team members can fill different locations on their own devices. Share a project with **Export field pack** and merge contributions with **Import field pack** (locations merge by a stable id, so partial sets combine cleanly). **Consolidate & generate** then aggregates the locations (numbers summed, text combined with location prefixes, scores left for you to set), opens an editable review, and produces one timestamped final Excel for upload. The final Excel is always reviewed and edited in Excel before upload, which is the quality gate. See [PLAN.md](PLAN.md) for the full design.
 
-## Why not just edit the Excel?
+## Why use this form?
 
-The GMS template is sheet-protected, slow on small screens, and easy to corrupt with generic tools (openpyxl-style round-trips silently strip workbook internals). This app never rebuilds the workbook; it patches only the value of edited cells inside the original zip, preserving styles, protection, validations, named ranges, printer settings and metadata untouched.
+It is faster and easier to fill on a phone or tablet in the field: guided steps, the template's own dropdowns and scoring rubrics, mandatory-field checks, and autosave that works offline. When you generate, the app fills your answers into the **original GMS template** and changes nothing else, so styles, validations, named ranges and every other workbook detail are preserved exactly as GMS produced them, and the file uploads just like a hand-filled template.
 
 ## Hosting
 
-Hosted on GitHub Pages from the `main` branch of [ocha-rosea/gms-field-monitoring-form](https://github.com/ocha-rosea/gms-field-monitoring-form); pushing to `main` redeploys automatically. The monitoring templates are **excluded by `.gitignore`**; monitors load their own project export at use time, so no project data is ever published. Keep it that way: never commit `Monitoring-*.xlsx` files or exported drafts.
+Hosted on GitHub Pages from the `main` branch of [ocha-rosea/gms-field-monitoring-form](https://github.com/ocha-rosea/gms-field-monitoring-form); pushing to `main` redeploys automatically.
 
 ## Branding
 
