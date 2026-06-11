@@ -140,11 +140,24 @@ hand-offs composes: 2 + 5 = 7, in any order, and re-importing the same bundle is
     can generate the final even if they never downloaded the template themselves.
   - `numberAggRules` = per-field choice of Sum / Average / Max / Min / First / Manual.
 
-- **locations** `{ id, projectKey, locationKey, locationName, gps, formState, author,
-  status, createdAt, updatedAt }`
-  - `locationKey` = normalized location name. This is the merge and dedup key within a
-    project.
-  - `formState` is the raw answers for that location (same shape as today's draft state).
+- **locations** `{ id, projectKey, locationName, gps, formState, author, status, planned,
+  createdAt, updatedAt }`
+  - `id` is a **stable generated id** (`crypto.randomUUID()`), assigned when the location is
+    planned or first created. It is the merge and dedup key, so two monitors typing the
+    location name slightly differently never mis-merge; `locationName` is only a human label.
+  - Locations are **first-class from Stage 2**: every project has at least one location, and
+    the form answers (`formState`) live on the location, not the project. A single-location
+    report is just a project with one location, so multi-location is a clean extension.
+  - `planned: true` marks a location defined up front in the visit plan but not yet filled.
+
+### Visit planning and field packs
+
+Before deployment a lead can pre-load each project's template and define the **list of
+locations to visit** (each gets a stable id). That project, with its planned empty locations,
+can be exported as a **field pack** bundle and shared so monitors have the right template and
+their locations ready, fully offline. The records page tracks progress against the plan
+(for example "3 of 7 locations complete"). Locations discovered in the field that were not
+planned can still be added ad hoc and get a fresh id.
 
 - **generated** `{ id, projectKey, filename, blob, generatedAt, uploadedAt }`
   - Stores each final Excel with timestamps. `uploadedAt` is set manually by the user, since
@@ -230,9 +243,11 @@ Each stage is shippable and verified before the next.
 1. **Modular refactor, no behaviour change.** Split the current app into the module
    structure above; re-verify it behaves identically; deploy.
 2. **IndexedDB store + records page.** Replace localStorage drafts; add the records home,
-   status workflow, timestamped exports, and database backup. Still single location.
-3. **Multi-location mode.** Location entries, union-by-key bundle export/import, the
-   aggregation review page, final generation.
+   status workflow, timestamped exports, and database backup. Locations are first-class
+   (one location per project for now), so Stage 3 needs no model migration.
+3. **Multi-location mode and visit planning.** Plan locations up front (stable ids), field
+   packs, location entries, union-by-id bundle export/import, the aggregation review page,
+   final generation.
 4. **Bundle passphrase encryption** for shared files.
 
 ## 10. Risks and open items
