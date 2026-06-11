@@ -42,7 +42,11 @@ Update strategy for new deployments: the page itself is fetched **network-first*
 
 ## Security and privacy
 
-All parsing, form filling and Excel generation happen in the browser; the app has no server, no analytics and no cookies. A Content-Security-Policy meta tag makes this browser-enforced: only same-origin resources may load and outbound connections to any other origin are refused, so even a future bug or a malicious workbook could not send data anywhere. Drafts are stored unencrypted in the browser's localStorage on the device; on shared computers, press Discard draft when done. The only network traffic is serving the page itself from GitHub Pages and the user's own upload to OneGMS.
+All parsing, form filling and Excel generation happen in the browser; the app has no server, no analytics and no cookies. A Content-Security-Policy meta tag makes this browser-enforced: only same-origin resources may load and outbound connections to any other origin are refused, so even a future bug or a malicious workbook could not send data anywhere. Drafts are stored unencrypted in the browser on the device; on shared computers, press Discard draft when done. The only network traffic is serving the page itself from GitHub Pages and the user's own upload to OneGMS.
+
+**Usage policy.** Monitoring reports contain personal data (staff and persons-met names, contacts, red-flag findings). Enter and store data only on organization-issued devices, and download or share exported files (drafts, location bundles, generated Excel, database backups) through internal UN channels only, never personal email or storage. Exported location bundles can be passphrase-encrypted for sharing within a monitoring team.
+
+See [PLAN.md](PLAN.md) for the architecture and roadmap of the multi-location, records-based version.
 
 ## Notes / limits
 
