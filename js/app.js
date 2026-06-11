@@ -648,6 +648,7 @@ function renderForm(){
   $('#btnNew').textContent=(CURPROJ&&CURPROJ.mode==='multi')?'Back to locations':'All reports';
   tabs.classList.remove('hidden');main.classList.remove('hidden');
   $('#storagebadge').classList.remove('hidden');
+  try{if(!localStorage.getItem('gmsfm:pentipDismissed'))$('#pentip').classList.remove('hidden');}catch(e){}
   $('#topbar').classList.remove('hidden');
   // in multi mode, the final Excel is generated only from the consolidation, not per location
   $('#btnGen').classList.toggle('hidden', !!(CURPROJ&&CURPROJ.mode==='multi'&&!(CURLOC&&CURLOC.consolidated)));
@@ -889,7 +890,7 @@ async function openProject(projectKey){
   }catch(err){notice('warn','Could not open report: '+encXml(err.message),true);console.error(err)}
 }
 function hideAll(){
-  for(const id of ['landing','records','project','tabs','form','topbar','storagebadge','chips','hdractions'])
+  for(const id of ['landing','records','project','tabs','form','topbar','storagebadge','pentip','chips','hdractions'])
     $('#'+id).classList.add('hidden');
 }
 /* ---- multi-location project view ---- */
@@ -1138,6 +1139,7 @@ $('#btnImportPack').addEventListener('click',()=>{
   inp.click();
 });
 $('#sbBtn').addEventListener('click',()=>$('#sbInfo').classList.toggle('hidden'));
+$('#pentipX').addEventListener('click',()=>{$('#pentip').classList.add('hidden');try{localStorage.setItem('gmsfm:pentipDismissed','1')}catch(e){}});
 // data-loss disclaimer: dismissible, remembered so it does not nag returning users
 (function(){
   const d=$('#disclaimer');if(!d)return;
