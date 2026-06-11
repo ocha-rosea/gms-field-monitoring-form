@@ -35,9 +35,22 @@
     <button class="btn sm ghost" id="btnExport">Export draft</button>
     <button class="btn sm ghost" id="btnImport">Import draft</button>
     <button class="btn sm ghost" id="btnReset">Discard draft</button>
-    <button class="btn sm ghost" id="btnNew">Load another file</button>
+    <button class="btn sm ghost" id="btnNew">All reports</button>
   </div>
 </header>
+
+<div id="records" class="hidden">
+  <div class="rec-head">
+    <h2>Your monitoring reports</h2>
+    <div class="rec-tools">
+      <button class="btn" id="btnNewReport">New report</button>
+      <button class="btn ghost sm" id="btnBackupExport">Export backup</button>
+      <button class="btn ghost sm" id="btnBackupImport">Import backup</button>
+    </div>
+  </div>
+  <p class="usagenote"><b>For official UN use.</b> Reports are stored only on this device. Use organization-issued devices and internal channels only, and keep a backup.</p>
+  <div id="reclist"></div>
+</div>
 
 <div id="landing">
   <div id="disclaimer">

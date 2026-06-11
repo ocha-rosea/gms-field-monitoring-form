@@ -69,6 +69,15 @@ function colToN(c){let n=0;for(const ch of c)n=n*26+ch.charCodeAt(0)-64;return n
 function splitRef(ref){const m=ref.match(/^([A-Z]+)(\d+)$/);return {col:m[1],colN:colToN(m[1]),row:+m[2]}}
 
 const WB={}; // global workbook model
+let CURPROJ=null, CURLOC=null; // current project + location records (IndexedDB)
+const pad2=n=>String(n).padStart(2,'0');
+function toAB(u8){return (u8.byteOffset===0&&u8.byteLength===u8.buffer.byteLength)?u8.buffer:u8.buffer.slice(u8.byteOffset,u8.byteOffset+u8.byteLength);}
+function newId(){return crypto.randomUUID?crypto.randomUUID():(String(Date.now())+'-'+Math.round(Math.random()*1e9));}
+async function hashBytes(u8){
+  try{const h=await crypto.subtle.digest('SHA-256',u8);
+    return Array.from(new Uint8Array(h).slice(0,6)).map(b=>b.toString(16).padStart(2,'0')).join('');}
+  catch(e){let h=2166136261;for(let i=0;i<u8.length;i++){h^=u8[i];h=Math.imul(h,16777619);}return (h>>>0).toString(16);}
+}
 async function parseXlsx(buf, fname){
   const zip=readZip(buf);
   const wbXml=await zip.getText('xl/workbook.xml');
@@ -634,6 +643,7 @@ function renderForm(){
   CUR=0;
   activateTab(0);showStep(0,0);
   $('#landing').classList.add('hidden');
+  $('#records').classList.add('hidden');
   tabs.classList.remove('hidden');main.classList.remove('hidden');
   $('#storagebadge').classList.remove('hidden');
   $('#topbar').classList.remove('hidden');
@@ -732,12 +742,13 @@ function onStateChange(){
   clearTimeout(saveTimer);
   saveTimer=setTimeout(()=>{
     const t=$('#sbTime'),b=$('#sbBtn');
-    try{
-      localStorage.setItem(draftKey(),JSON.stringify({ts:new Date().toISOString(),state}));
-      if(t&&Object.keys(state).length){t.textContent='draft saved '+new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});b.classList.remove('warn')}
-    }catch(e){
-      if(t){t.textContent='autosave unavailable here. Use Export draft to keep your work';b.classList.add('warn')}
-    }
+    if(!CURLOC)return;
+    CURLOC.formState=state;
+    CURLOC.status=missAll.length?'draft':'complete';
+    Store.putLocation(CURLOC).then(()=>{
+      if(CURPROJ&&CURPROJ.status!=='generated'&&CURPROJ.status!=='uploaded'){CURPROJ.status=CURLOC.status;Store.putProject(CURPROJ);}
+      if(t&&Object.keys(state).length){t.textContent='saved on this device '+new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});b.classList.remove('warn');}
+    }).catch(()=>{if(t){t.textContent='could not save on this device. Use Export draft to keep your work';b.classList.add('warn');}});
   },400);
 }
 
@@ -813,13 +824,23 @@ async function generate(){
   let wbXml=await WB.zip.getText('xl/workbook.xml');
   repl.set('xl/workbook.xml',ensureFullCalc(wbXml));
   const blob=await writeZip(WB.zip,repl);
-  const a=el('a',{href:URL.createObjectURL(blob),download:WB.fname});
+  const d=new Date();
+  const ts=''+d.getFullYear()+pad2(d.getMonth()+1)+pad2(d.getDate())+'-'+pad2(d.getHours())+pad2(d.getMinutes());
+  const filename=(WB.fname||'Monitoring').replace(/\.xlsx$/i,'')+'_final-'+ts+'.xlsx';
+  if(CURPROJ){
+    try{
+      const bytes=new Uint8Array(await blob.arrayBuffer());
+      await Store.putGenerated({projectKey:CURPROJ.projectKey,filename,bytes,generatedAt:d.toISOString()});
+      CURPROJ.status='generated';await Store.putProject(CURPROJ);
+    }catch(e){console.error(e);}
+  }
+  const a=el('a',{href:URL.createObjectURL(blob),download:filename});
   document.body.appendChild(a);a.click();a.remove();
-  notice('ok','<b>'+edits.length+' field(s) written.</b> The downloaded file is the original GMS template with your answers injected. Open it once in Excel to refresh the score formulas, then upload to OneGMS.');
+  notice('ok','<b>'+edits.length+' field(s) written.</b> Saved to your records as <b>'+encXml(filename)+'</b>. Open it once in Excel to refresh the score formulas, then upload to OneGMS.');
   return blob;
 }
 
-/* ============================================================ wiring ==== */
+/* ============================================================ records + wiring ==== */
 async function loadFile(file){
   try{
     const buf=await file.arrayBuffer();
@@ -827,12 +848,83 @@ async function loadFile(file){
     if(!Object.keys(WB.defined).some(n=>n.startsWith('fld_'))){
       notice('warn','This workbook has no GMS <code>fld_*</code> named ranges, so it does not look like a OneGMS monitoring template export.',true);return;
     }
-    state={};
-    const draft=localStorage.getItem('gmsfm:'+file.name);
-    if(draft){try{const d=JSON.parse(draft);state=d.state||{};
-      notice('info','Draft from '+new Date(d.ts).toLocaleString()+' restored. Use “Discard draft” to start from the file contents.');}catch(e){}}
+    const templateBytes=new Uint8Array(buf);
+    const code=namedV('fld_chfProjectCode')||file.name.replace(/\.xlsx$/i,'');
+    const projectKey=code+'|'+(await hashBytes(templateBytes));
+    let proj=await Store.getProject(projectKey);
+    if(proj){
+      const locs=await Store.listLocations(projectKey);
+      CURLOC=locs[0]||{id:newId(),projectKey,locationName:namedV('fld_visitLocation')||'',formState:{},status:'draft'};
+      notice('info','Reopened a saved report. Your earlier entries were restored.');
+    }else{
+      proj={projectKey,projectCode:namedV('fld_chfProjectCode')||'',partner:namedV('fld_organizationName')||'',
+        country:namedV('fld_visitCountry')||'',filename:file.name,templateBytes,mode:'single',status:'draft'};
+      await Store.putProject(proj);
+      CURLOC={id:newId(),projectKey,locationName:namedV('fld_visitLocation')||'',formState:{},status:'draft'};
+      await Store.putLocation(CURLOC);
+    }
+    CURPROJ=proj;
+    state=Object.assign({},CURLOC.formState||{});
     renderForm();
   }catch(err){notice('warn','Could not read file: '+encXml(err.message),true);console.error(err)}
+}
+async function openProject(projectKey){
+  try{
+    const proj=await Store.getProject(projectKey);
+    if(!proj){notice('warn','Report not found.');return;}
+    await parseXlsx(toAB(proj.templateBytes),proj.filename||'template.xlsx');
+    const locs=await Store.listLocations(projectKey);
+    CURLOC=locs[0]||{id:newId(),projectKey,locationName:'',formState:{},status:'draft'};
+    if(!locs[0])await Store.putLocation(CURLOC);
+    CURPROJ=proj;
+    state=Object.assign({},CURLOC.formState||{});
+    renderForm();
+  }catch(err){notice('warn','Could not open report: '+encXml(err.message),true);console.error(err)}
+}
+function hideAll(){
+  for(const id of ['landing','records','tabs','form','topbar','storagebadge','chips','hdractions'])
+    $('#'+id).classList.add('hidden');
+}
+async function showHome(){
+  flushDraft();
+  hideAll();
+  $('#hdrsub').textContent='Fill the GMS monitoring template on any device, then regenerate the exact Excel for upload to OneGMS.';
+  await renderRecords();
+  $('#records').classList.remove('hidden');
+  window.scrollTo(0,0);
+}
+function showLanding(){hideAll();$('#landing').classList.remove('hidden');window.scrollTo(0,0);}
+async function renderRecords(){
+  const list=$('#reclist');list.innerHTML='';
+  let projects=[];try{projects=await Store.listProjects();}catch(e){console.error(e);}
+  if(!projects.length){list.innerHTML='<div class="rec-empty">No saved reports yet. Choose <b>New report</b> to load a GMS template and start.</div>';return;}
+  for(const p of projects){
+    const gens=await Store.listGenerated(p.projectKey);const lastGen=gens[0];
+    const meta=[p.partner&&('Partner: '+encXml(p.partner)),p.country&&('Country: '+encXml(p.country)),
+      'Updated '+new Date(p.updatedAt).toLocaleString(),
+      lastGen?('Last generated '+new Date(lastGen.generatedAt).toLocaleString()):''].filter(Boolean).join(' &middot; ');
+    const card=el('div',{class:'reccard'});
+    const main=el('div',{class:'rc-main'});
+    main.innerHTML='<div class="rc-code">'+encXml(p.projectCode||p.filename||'Report')+
+      ' <span class="rc-status '+(p.status||'draft')+'">'+encXml(p.status||'draft')+'</span></div>'+
+      '<div class="rc-meta">'+meta+'</div>';
+    card.appendChild(main);
+    const acts=el('div',{class:'rc-actions'});
+    const open=el('button',{class:'btn sm'},'Open');open.addEventListener('click',()=>openProject(p.projectKey));acts.appendChild(open);
+    if(lastGen){
+      const dl=el('button',{class:'btn sm ghost'},'Download Excel');
+      dl.addEventListener('click',()=>{const b=new Blob([lastGen.bytes],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+        const a=el('a',{href:URL.createObjectURL(b),download:lastGen.filename});document.body.appendChild(a);a.click();a.remove();});
+      acts.appendChild(dl);
+      const mk=el('button',{class:'btn sm ghost'},p.status==='uploaded'?'Uploaded ✓':'Mark uploaded');
+      mk.addEventListener('click',async()=>{p.status='uploaded';await Store.putProject(p);lastGen.uploadedAt=new Date().toISOString();await Store.updateGenerated(lastGen);renderRecords();});
+      acts.appendChild(mk);
+    }
+    const del=el('button',{class:'btn sm ghost'},'Delete');
+    del.addEventListener('click',async()=>{if(confirm('Delete this report and its saved files from this device?')){await Store.deleteProject(p.projectKey);renderRecords();}});
+    acts.appendChild(del);
+    card.appendChild(acts);list.appendChild(card);
+  }
 }
 const dz=$('#dropzone'),fi=$('#fileinput');
 dz.addEventListener('click',()=>fi.click());
@@ -843,22 +935,41 @@ dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('drag');e.
 $('#btnGen').addEventListener('click',()=>generate().catch(e=>{notice('warn','Generation failed: '+encXml(e.message),true);console.error(e)}));
 $('#btnExport').addEventListener('click',()=>{
   const blob=new Blob([JSON.stringify({file:WB.fname,ts:new Date().toISOString(),state},null,1)],{type:'application/json'});
-  const a=el('a',{href:URL.createObjectURL(blob),download:WB.fname.replace(/\.xlsx$/i,'')+'-draft.json'});
+  const a=el('a',{href:URL.createObjectURL(blob),download:(WB.fname||'report').replace(/\.xlsx$/i,'')+'-draft.json'});
   document.body.appendChild(a);a.click();a.remove();
 });
 $('#btnImport').addEventListener('click',()=>{
   const inp=el('input',{type:'file',accept:'.json'});
   inp.addEventListener('change',async()=>{
-    try{const d=JSON.parse(await inp.files[0].text());state=d.state||{};renderForm();
-      notice('info','Draft imported.');}catch(e){notice('warn','Invalid draft file.')}
+    try{const d=JSON.parse(await inp.files[0].text());state=d.state||{};
+      if(CURLOC){CURLOC.formState=state;await Store.putLocation(CURLOC);}renderForm();notice('info','Draft imported.');}
+    catch(e){notice('warn','Invalid draft file.')}
   });
   inp.click();
 });
-$('#btnReset').addEventListener('click',()=>{
-  if(!confirm('Discard the saved draft and reload values from the Excel file?'))return;
-  localStorage.removeItem(draftKey());state={};renderForm();
+$('#btnReset').addEventListener('click',async()=>{
+  if(!confirm('Discard your entries for this report and start from the template values?'))return;
+  state={};if(CURLOC){CURLOC.formState={};CURLOC.status='draft';await Store.putLocation(CURLOC);}renderForm();
 });
-$('#btnNew').addEventListener('click',()=>location.reload());
+$('#btnNew').addEventListener('click',()=>showHome());
+$('#btnNewReport').addEventListener('click',()=>showLanding());
+$('#btnBackupExport').addEventListener('click',async()=>{
+  try{const data=await Store.exportAll();
+    const blob=new Blob([JSON.stringify(data)],{type:'application/json'});
+    const d=new Date();const ts=''+d.getFullYear()+pad2(d.getMonth()+1)+pad2(d.getDate())+'-'+pad2(d.getHours())+pad2(d.getMinutes());
+    const a=el('a',{href:URL.createObjectURL(blob),download:'gms-field-monitor-backup-'+ts+'.json'});
+    document.body.appendChild(a);a.click();a.remove();
+    notice('ok','Backup exported. Keep it on an internal channel only.');
+  }catch(e){notice('warn','Backup failed: '+encXml(e.message),true);console.error(e);}
+});
+$('#btnBackupImport').addEventListener('click',()=>{
+  const inp=el('input',{type:'file',accept:'.json'});
+  inp.addEventListener('change',async()=>{
+    try{const data=JSON.parse(await inp.files[0].text());await Store.importAll(data);await renderRecords();
+      notice('ok','Backup imported.');}catch(e){notice('warn','Invalid backup file: '+encXml(e.message),true);console.error(e);}
+  });
+  inp.click();
+});
 $('#sbBtn').addEventListener('click',()=>$('#sbInfo').classList.toggle('hidden'));
 // data-loss disclaimer: dismissible, remembered so it does not nag returning users
 (function(){
@@ -869,18 +980,27 @@ $('#sbBtn').addEventListener('click',()=>$('#sbInfo').classList.toggle('hidden')
     try{localStorage.setItem('gmsfm:discDismissed','1')}catch(e){}
   });
 })();
-// flush the draft immediately if the page is hidden or closed mid-debounce
+// flush the current entries immediately if the page is hidden or closed mid-debounce
 function flushDraft(){
-  if(!WB.fname||!Object.keys(state).length)return;
+  if(!CURLOC)return;
   clearTimeout(saveTimer);
-  try{localStorage.setItem(draftKey(),JSON.stringify({ts:new Date().toISOString(),state}))}catch(e){}
+  CURLOC.formState=state;
+  try{Store.putLocation(CURLOC);if(CURPROJ)Store.putProject(CURPROJ);}catch(e){}
 }
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')flushDraft()});
 window.addEventListener('pagehide',flushDraft);
 // offline support: after the first online visit the page loads with no connection
 if('serviceWorker' in navigator&&location.protocol!=='file:')
   navigator.serviceWorker.register('sw.js').catch(()=>{});
+// startup: open the records home if there are already saved reports
+(async function(){
+  try{await Store.open();Store.persist();
+    const projects=await Store.listProjects();
+    if(projects.length)await showHome();
+  }catch(e){console.error(e);}
+})();
 
 // test hook (no UI impact)
-window.__gms={WB,get state(){return state},set state(s){state=s},loadBuffer:async(buf,name)=>{await parseXlsx(buf,name);state={};renderForm()},
-  collectEdits,generate,setVal:(k,v)=>{state[k]=v;onStateChange()},inputs:()=>inputsIndex,cellV,namedV};
+window.__gms={WB,get state(){return state},set state(s){state=s},loadBuffer:async(buf,name)=>{await parseXlsx(buf,name);CURPROJ=null;CURLOC=null;state={};renderForm()},
+  collectEdits,generate,setVal:(k,v)=>{state[k]=v;onStateChange()},inputs:()=>inputsIndex,cellV,namedV,
+  openProject,showHome,renderRecords,loadFileObj:loadFile,get curproj(){return CURPROJ},get curloc(){return CURLOC}};
