@@ -38,7 +38,49 @@ and red-flag findings), the following usage rules apply and are shown in the app
 - **Add to home screen / install** so the browser keeps the data (mitigates the iOS
   eviction risk), and keep a database backup.
 
-## 3. Module structure
+## 3. Architecture and module structure
+
+Everything runs in the browser on the device. There is no server: the only things that
+cross the network are loading the static app from GitHub Pages, the user's own upload to
+OneGMS, and the user choosing to share an export through an internal channel.
+
+```mermaid
+flowchart TB
+  TPL["GMS FSM template .xlsx"]
+  subgraph Device [On the device, browser, fully local, offline-capable]
+    APP["app.js: router and wiring"]
+    subgraph UI [UI layer]
+      REC["records.js: records home"]
+      FORM["form.js: location form, step wizard"]
+      AGGV["aggregate.js: aggregation review"]
+    end
+    subgraph Core [Core engine]
+      CAT["catalog.js: fields, REQUIRED, aggregation rules"]
+      XLSX["xlsx.js: parse fld_*, inject cells"]
+      ZIP["zip.js: OOXML zip read and write"]
+    end
+    subgraph Data [Storage and exchange]
+      STORE["store.js: IndexedDB access"]
+      BUNDLE["bundle.js: export and import, optional passphrase"]
+      IDB[("IndexedDB: projects, locations, generated, meta")]
+    end
+    SW["sw.js: offline precache"]
+  end
+  OUT["Timestamped final .xlsx"]
+  GMS[("OneGMS")]
+  OTHER["Other monitors' devices"]
+
+  TPL -->|load| XLSX
+  APP --> REC & FORM & AGGV
+  UI --> Core
+  UI --> STORE
+  STORE --> IDB
+  Core --> ZIP
+  AGGV -->|generate| OUT
+  OUT -.->|manual upload| GMS
+  BUNDLE -.->|share via internal channels| OTHER
+  STORE --- BUNDLE
+```
 
 The single `index.html` is split into dependency-free ES modules, which GitHub Pages serves
 natively and the CSP already allows (`script-src 'self'`). Externalizing the scripts also
@@ -66,6 +108,27 @@ The composability requirement ("one person aggregates 2 locations, another 5, an
 still be combined") drives the model. The rule: **share the set of individual location
 entries, never a pre-merged blob.** Aggregation is a pure function computed on demand, never
 written back destructively.
+
+```mermaid
+flowchart LR
+  subgraph DA [Monitor A device]
+    A1["Location A1"] --> BA["Bundle A: 2 entries"]
+    A2["Location A2"] --> BA
+  end
+  subgraph DB [Monitor B device]
+    B1["Locations B1 to B5"] --> BB["Bundle B: 5 entries"]
+  end
+  subgraph DAG [Aggregating user device]
+    U["Union by location key: 7 entries"] --> RV["Aggregation review"]
+    RV --> FX["One timestamped final Excel"]
+  end
+  BA -.->|internal channel| U
+  BB -.->|internal channel| U
+  FX -.->|manual upload| GMS[("OneGMS")]
+```
+
+Because the unit that travels is the set of entries (not a merged result), any chain of
+hand-offs composes: 2 + 5 = 7, in any order, and re-importing the same bundle is harmless.
 
 ### Entities (IndexedDB object stores)
 
@@ -127,6 +190,16 @@ reviews and edits it in Excel before uploading to GMS, which is the quality gate
   `LocationX_` prefixes. Review, adjust, then generate the timestamped final Excel.
 
 ## 7. Status workflow and timestamps
+
+```mermaid
+stateDiagram-v2
+  [*] --> Draft
+  Draft --> Complete: location mandatory fields filled
+  Complete --> Ready: all locations complete
+  Ready --> Generated: final Excel produced, timestamped
+  Generated --> Uploaded: user marks after GMS upload
+  Uploaded --> [*]
+```
 
 `Draft` (in progress) -> `Complete` (a location's mandatory fields filled) -> `Ready` (all
 locations complete) -> `Generated` (final Excel produced, timestamped) -> `Uploaded` (manual
