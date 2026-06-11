@@ -185,9 +185,20 @@ reviews and edits it in Excel before uploading to GMS, which is the quality gate
 - **Project view**: the project's location entries with per-location status; add a location,
   continue editing, generate final, mark uploaded, export bundle.
 - **Location form**: the existing step wizard, scoped to one location.
-- **Aggregation review**: full consolidated view before download. Per-number-field
-  aggregation selector; scores and dropdowns flagged for decision; free text shown with
-  `LocationX_` prefixes. Review, adjust, then generate the timestamped final Excel.
+- **Aggregation review**: full consolidated view before download, and it is editable, not
+  read-only. The user picks each number field's aggregation rule or types a manual value,
+  sets each score (with the per-location scores shown for reference), resolves dropdowns, and
+  can tidy the `LocationX_` free-text concatenation. Then generate the timestamped final
+  Excel, which remains editable in Excel as the final QA gate.
+
+  Edits here are stored as an **override layer on the project**
+  (`project.consolidation = { aggRules, overrides }`), never written back into the location
+  entries. Aggregation is `aggregate(locations, aggRules, overrides)`: overrides win. This
+  keeps the per-location source data pristine (so composability and the audit trail hold),
+  lets re-aggregation after importing more locations preserve the user's manual decisions,
+  and flags an override as possibly stale if its underlying aggregated value later changes.
+  To change a single site's source data, open that location's form; source data is not edited
+  on the consolidation page.
 
 ## 7. Status workflow and timestamps
 
