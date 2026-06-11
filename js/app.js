@@ -447,7 +447,8 @@ function registerInput(container,{key,sheet,ref,type,label,options,ph,pre,rubric
   inputsIndex.push(it);
   const wrap=el('div',{class:'fld'+(req?' req':'')});
   it.wrap=wrap;
-  const lab=el('label',null,encXml(label)+(pre?'<span class="pre">pre-filled from GMS</span>':''));
+  const penHint=type==='textarea'?'<span class="penhint" title="On a stylus device, write here by hand and your device converts it to text">&#9998;</span>':'';
+  const lab=el('label',null,encXml(label)+penHint+(pre?'<span class="pre">pre-filled from GMS</span>':''));
   wrap.appendChild(lab);
   let input;
   const cur=key in state?state[key]:origValueFor(it);
