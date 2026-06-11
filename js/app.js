@@ -475,8 +475,7 @@ function registerInput(container,{key,sheet,ref,type,label,options,ph,pre,rubric
   inputsIndex.push(it);
   const wrap=el('div',{class:'fld'+(req?' req':'')});
   it.wrap=wrap;
-  const penHint=type==='textarea'?'<span class="penhint" role="button" tabindex="0" title="Tap for how to handwrite into this field">&#9998;</span>':'';
-  const lab=el('label',null,encXml(label)+penHint+(pre?'<span class="pre">pre-filled from GMS</span>':''));
+  const lab=el('label',null,encXml(label)+(pre?'<span class="pre">pre-filled from GMS</span>':''));
   wrap.appendChild(lab);
   let input;
   const cur=key in state?state[key]:origValueFor(it);
@@ -677,7 +676,7 @@ function renderForm(){
   $('#btnNew').textContent=(CURPROJ&&CURPROJ.mode==='multi')?'Back to locations':'All reports';
   tabs.classList.remove('hidden');main.classList.remove('hidden');
   $('#storagebadge').classList.remove('hidden');
-  try{if(document.body.classList.contains('pen-capable')&&!localStorage.getItem('gmsfm:pentipDismissed'))$('#pentip').classList.remove('hidden');}catch(e){}
+  try{if(document.body.classList.contains('pen-capable')&&!localStorage.getItem('gmsfm:penTipShown')){localStorage.setItem('gmsfm:penTipShown','1');setTimeout(showHandwritingPopup,500);}}catch(e){}
   $('#topbar').classList.remove('hidden');
   // in multi mode, the final Excel is generated only from the consolidation, not per location
   $('#btnGen').classList.toggle('hidden', !!(CURPROJ&&CURPROJ.mode==='multi'&&!(CURLOC&&CURLOC.consolidated)));
@@ -921,7 +920,7 @@ async function openProject(projectKey){
   }catch(err){notice('warn','Could not open report: '+encXml(err.message),true);console.error(err)}
 }
 function hideAll(){
-  for(const id of ['landing','records','project','tabs','form','topbar','storagebadge','pentip','chips','hdractions'])
+  for(const id of ['landing','records','project','tabs','form','topbar','storagebadge','chips','hdractions'])
     $('#'+id).classList.add('hidden');
 }
 /* ---- multi-location project view ---- */
@@ -976,18 +975,17 @@ async function addLocation(){
 }
 function backFromForm(){flushDraft();if(CURPROJ&&CURPROJ.mode==='multi')enterProjectView();else showHome();}
 // platform-aware handwriting guidance (shown when the pen marker is tapped)
-function showHandwritingHelp(){
-  const ua=navigator.userAgent;let msg;
+function handwritingGuidanceText(){
+  const ua=navigator.userAgent;
   if(/iPad|iPhone|iPod/.test(ua)||(/Macintosh/.test(ua)&&navigator.maxTouchPoints>1))
-    msg='<b>Apple Pencil:</b> write directly into this box and iPadOS Scribble converts it to text. Turn it on in Settings &rarr; Apple Pencil &rarr; Scribble.';
-  else if(/Android/.test(ua))
-    msg='<b>Stylus:</b> write directly into this box; your device converts handwriting to text. On Samsung, enable Settings &rarr; Advanced features &rarr; S Pen &rarr; Pen to text.';
-  else if(/Windows/.test(ua))
-    msg='<b>Windows:</b> tap inside this box, open the touch keyboard from the taskbar, switch to the handwriting (pen) panel, then write. Windows converts your handwriting to text in the field.';
-  else
-    msg='Use your device&rsquo;s handwriting input to write into this box; it converts handwriting to text.';
-  notice('info',msg);
+    return 'With Apple Pencil, write directly into any text box and iPadOS Scribble converts it to text (Settings, Apple Pencil, Scribble).';
+  if(/Android/.test(ua))
+    return 'With a stylus, write directly into any text box and your device converts it to text. On Samsung, enable Settings, Advanced features, S Pen, Pen to text.';
+  if(/Windows/.test(ua))
+    return 'Tap inside a text box, open the touch keyboard from the taskbar, switch to the handwriting (pen) panel, then write. Windows converts your handwriting to text.';
+  return 'Use your device handwriting input to write into any text box; it converts handwriting to text.';
 }
+function showHandwritingPopup(){return uiModal({title:'Handwriting',message:handwritingGuidanceText(),cancelText:null,okText:'Got it'});}
 function u8b64(u8){let s='';const C=0x8000;for(let i=0;i<u8.length;i+=C)s+=String.fromCharCode.apply(null,u8.subarray(i,i+C));return btoa(s);}
 function b64u8(b){const s=atob(b);const u=new Uint8Array(s.length);for(let i=0;i<s.length;i++)u[i]=s.charCodeAt(i);return u;}
 // optional passphrase encryption for shared files (offline, Web Crypto, PBKDF2 + AES-GCM)
@@ -1191,10 +1189,6 @@ $('#btnImportPack').addEventListener('click',()=>{
   inp.click();
 });
 $('#sbBtn').addEventListener('click',()=>$('#sbInfo').classList.toggle('hidden'));
-$('#pentipX').addEventListener('click',()=>{$('#pentip').classList.add('hidden');try{localStorage.setItem('gmsfm:pentipDismissed','1')}catch(e){}});
-// tap the per-field pen marker for platform-specific handwriting guidance
-document.addEventListener('click',e=>{if(e.target.closest('.penhint')){e.preventDefault();showHandwritingHelp();}});
-document.addEventListener('keydown',e=>{if((e.key==='Enter'||e.key===' ')&&e.target.classList&&e.target.classList.contains('penhint')){e.preventDefault();showHandwritingHelp();}});
 // handwriting affordance only on pen/touch-capable devices (stylus tablets, iPads, Windows touch/pen)
 function markPenCapable(){document.body.classList.add('pen-capable');}
 if(navigator.maxTouchPoints>0||(window.matchMedia&&window.matchMedia('(any-pointer: coarse)').matches))markPenCapable();
