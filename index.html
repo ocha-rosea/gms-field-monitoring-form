@@ -33,8 +33,9 @@ body{margin:0;font-family:Roboto,Arial,sans-serif;color:var(--ink);background:#f
 .brandbar{height:6px;background:var(--un)}
 header{border-bottom:1px solid var(--g-lt);background:#fff}
 header .hwrap{max-width:880px;margin:0 auto;padding:12px 16px 8px;display:flex;gap:18px;align-items:center}
-#logo{height:64px;width:auto;flex:none}
-header h1{margin:0;font-size:21px;font-weight:600;color:var(--navy)}
+#logo{height:60px;width:auto;flex:none}
+.htext{flex:1;min-width:0}
+header h1{margin:0;font-size:21px;font-weight:600;color:var(--navy);line-height:1.2}
 header .sub{font-size:13.5px;color:var(--gray);margin-top:2px}
 .chips{display:flex;flex-wrap:wrap;gap:6px;max-width:880px;margin:0 auto;padding:4px 16px}
 .chip{background:var(--blue-bg);color:var(--blue-aaa);border-radius:3px;padding:3px 10px;font-size:13px}
@@ -129,7 +130,15 @@ footer .bar{display:flex;justify-content:center}
 .notice.warn{background:var(--red-bg);border:1px solid var(--red)}
 .notice.info{background:var(--blue-bg);border:1px solid var(--blue-pale)}
 .hidden{display:none!important}
-@media(max-width:560px){.score-row{flex-direction:column}.score-row .num{width:100%}#logo{height:42px}#footlogo{height:40px}}
+@media(max-width:680px){
+  header .hwrap{flex-wrap:wrap;gap:6px 14px;padding:10px 14px 8px}
+  #logo{height:40px}
+  #ghlink{margin-left:auto;order:1}
+  .htext{flex-basis:100%;order:2}
+  header h1{font-size:18px}
+  header .sub{font-size:12.5px;margin-top:1px}
+}
+@media(max-width:560px){.score-row{flex-direction:column}.score-row .num{width:100%}#footlogo{height:40px}}
 </style>
 </head>
 <body>
@@ -139,7 +148,7 @@ footer .bar{display:flex;justify-content:center}
   <div class="hwrap">
     <img id="logo" src="assets/ESAHF_2024_wordmark_Blue.svg" alt="ESAHF"
          onerror="this.style.display='none'">
-    <div>
+    <div class="htext">
       <h1>CBPF Field Site Monitoring</h1>
       <div class="sub" id="hdrsub">Fill the GMS monitoring template on any device, then regenerate the exact Excel for upload to OneGMS.</div>
     </div>
