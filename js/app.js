@@ -693,6 +693,8 @@ function activateTab(i){
   CUR=i;
   document.querySelectorAll('#tabs button').forEach((b,j)=>b.classList.toggle('on',i===j));
   document.querySelectorAll('main section').forEach((p,j)=>p.classList.toggle('hidden',i!==j));
+  const b=document.getElementById('tabbtn-'+i);
+  if(b)try{b.scrollIntoView({inline:'center',block:'nearest'})}catch(e){}
 }
 function showTab(i){
   if(i>CUR){ // moving forward: all earlier sections must have mandatory fields complete

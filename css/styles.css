@@ -71,7 +71,8 @@ header .sub{font-size:13.5px;color:var(--gray);margin-top:2px}
 #ghlink{margin-left:auto;color:var(--g-mid);flex:none;display:flex;align-items:center}
 #ghlink:hover{color:var(--un)}
 #stickytop{position:sticky;top:0;z-index:20;background:#fff}
-nav#tabs{display:flex;gap:0;justify-content:center;overflow-x:auto;background:#fff;border-bottom:1px solid var(--g-lt)}
+nav#tabs{display:flex;gap:0;justify-content:center;overflow-x:auto;background:#fff;border-bottom:1px solid var(--g-lt);scrollbar-width:none;-ms-overflow-style:none}
+nav#tabs::-webkit-scrollbar{display:none}
 #topbar{background:#fff;border-bottom:2px solid var(--g-lt)}
 #topbar .bar{max-width:880px;margin:0 auto;display:flex;gap:14px;align-items:center;padding:8px 12px}
 nav#tabs button{flex:0 1 auto;padding:11px 22px;border:0;background:none;font:inherit;font-size:14.5px;color:var(--g-dark);border-bottom:3px solid transparent;cursor:pointer;white-space:nowrap}
@@ -164,5 +165,12 @@ footer .bar{display:flex;justify-content:center}
   .htext{flex-basis:100%;order:2}
   header h1{font-size:18px}
   header .sub{font-size:12.5px;margin-top:1px}
+  nav#tabs{justify-content:flex-start}
+  nav#tabs button{padding:10px 13px;font-size:13px}
+  #topbar .bar{flex-wrap:wrap;gap:8px 12px;padding:8px 12px}
+  .prog{flex:1 1 100%}
+  #btnGen{flex:1 1 auto;padding:10px 14px;font-size:14px}
+  .group{padding:13px 13px}
+  .group>h3{font-size:16px}
 }
 @media(max-width:560px){.score-row{flex-direction:column}.score-row .num{width:100%}#footlogo{height:40px}}
