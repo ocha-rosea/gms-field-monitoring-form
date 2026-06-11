@@ -58,6 +58,8 @@ See [PLAN.md](PLAN.md) for the architecture and roadmap of the multi-location, r
 
 Every note field is a standard text box, so on a stylus device monitors can **write by hand directly into any field and the device converts it to text**, fully offline, with no app changes. This is the recommended approach: it keeps the stored value as plain text (which the GMS cells require), needs no model download, and works with no network. The app deliberately does not bundle a handwriting recognition engine (a capable offline model would add tens of MB and is unreliable on field handwriting) and cannot use a cloud recognizer (the Content-Security-Policy blocks it).
 
+The ✎ marker that signals a handwriting field only appears on **pen or touch-capable devices** (stylus tablets, iPads, Windows touch/pen devices); it is hidden on mouse-only desktops where there is no pen.
+
 To enable it on issued tablets:
 - **Samsung / Android with stylus**: Settings → Advanced features → S Pen → enable "Pen to text" (or "Direct pen input"), then write into any text field.
 - **iPad + Apple Pencil**: Settings → Apple Pencil → turn on **Scribble**, then write into any text field.

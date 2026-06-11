@@ -106,7 +106,8 @@ main{max-width:880px;margin:0 auto;padding:8px 12px 95px;background:#fff}
 .fld label{display:block;font-size:14px;font-weight:600;margin-bottom:4px;color:var(--g-dark)}
 .fld.req>label::after{content:" *";color:var(--red);font-weight:700}
 .fld label .pre{font-weight:400;color:var(--blue-aa);font-size:12px;margin-left:6px}
-.fld label .penhint{color:var(--blue-aa);font-weight:400;margin-left:6px;cursor:help}
+.fld label .penhint{color:var(--blue-aa);font-weight:400;margin-left:6px;cursor:help;display:none}
+body.pen-capable .fld label .penhint{display:inline}
 .fld input[type=text],.fld input[type=date],.fld input[type=number],.fld select,.fld textarea{
   width:100%;padding:9px 10px;border:1px solid var(--g-mid);border-radius:4px;font:inherit;font-size:16px;background:#fff;color:var(--ink)}
 .fld textarea{min-height:74px;resize:vertical}

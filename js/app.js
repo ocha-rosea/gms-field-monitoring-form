@@ -649,7 +649,7 @@ function renderForm(){
   $('#btnNew').textContent=(CURPROJ&&CURPROJ.mode==='multi')?'Back to locations':'All reports';
   tabs.classList.remove('hidden');main.classList.remove('hidden');
   $('#storagebadge').classList.remove('hidden');
-  try{if(!localStorage.getItem('gmsfm:pentipDismissed'))$('#pentip').classList.remove('hidden');}catch(e){}
+  try{if(document.body.classList.contains('pen-capable')&&!localStorage.getItem('gmsfm:pentipDismissed'))$('#pentip').classList.remove('hidden');}catch(e){}
   $('#topbar').classList.remove('hidden');
   // in multi mode, the final Excel is generated only from the consolidation, not per location
   $('#btnGen').classList.toggle('hidden', !!(CURPROJ&&CURPROJ.mode==='multi'&&!(CURLOC&&CURLOC.consolidated)));
@@ -1141,6 +1141,10 @@ $('#btnImportPack').addEventListener('click',()=>{
 });
 $('#sbBtn').addEventListener('click',()=>$('#sbInfo').classList.toggle('hidden'));
 $('#pentipX').addEventListener('click',()=>{$('#pentip').classList.add('hidden');try{localStorage.setItem('gmsfm:pentipDismissed','1')}catch(e){}});
+// handwriting affordance only on pen/touch-capable devices (stylus tablets, iPads, Windows touch/pen)
+function markPenCapable(){document.body.classList.add('pen-capable');}
+if(navigator.maxTouchPoints>0||(window.matchMedia&&window.matchMedia('(any-pointer: coarse)').matches))markPenCapable();
+window.addEventListener('pointerdown',e=>{if(e.pointerType==='pen')markPenCapable();});
 // data-loss disclaimer: dismissible, remembered so it does not nag returning users
 (function(){
   const d=$('#disclaimer');if(!d)return;
