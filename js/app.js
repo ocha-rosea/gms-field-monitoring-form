@@ -447,7 +447,7 @@ function registerInput(container,{key,sheet,ref,type,label,options,ph,pre,rubric
   inputsIndex.push(it);
   const wrap=el('div',{class:'fld'+(req?' req':'')});
   it.wrap=wrap;
-  const penHint=type==='textarea'?'<span class="penhint" title="On a stylus device, write here by hand and your device converts it to text">&#9998;</span>':'';
+  const penHint=type==='textarea'?'<span class="penhint" role="button" tabindex="0" title="Tap for how to handwrite into this field">&#9998;</span>':'';
   const lab=el('label',null,encXml(label)+penHint+(pre?'<span class="pre">pre-filled from GMS</span>':''));
   wrap.appendChild(lab);
   let input;
@@ -945,6 +945,19 @@ async function addLocation(){
   renderProjectView();
 }
 function backFromForm(){flushDraft();if(CURPROJ&&CURPROJ.mode==='multi')enterProjectView();else showHome();}
+// platform-aware handwriting guidance (shown when the pen marker is tapped)
+function showHandwritingHelp(){
+  const ua=navigator.userAgent;let msg;
+  if(/iPad|iPhone|iPod/.test(ua)||(/Macintosh/.test(ua)&&navigator.maxTouchPoints>1))
+    msg='<b>Apple Pencil:</b> write directly into this box and iPadOS Scribble converts it to text. Turn it on in Settings &rarr; Apple Pencil &rarr; Scribble.';
+  else if(/Android/.test(ua))
+    msg='<b>Stylus:</b> write directly into this box; your device converts handwriting to text. On Samsung, enable Settings &rarr; Advanced features &rarr; S Pen &rarr; Pen to text.';
+  else if(/Windows/.test(ua))
+    msg='<b>Windows:</b> tap inside this box, open the touch keyboard from the taskbar, switch to the handwriting (pen) panel, then write. Windows converts your handwriting to text in the field.';
+  else
+    msg='Use your device&rsquo;s handwriting input to write into this box; it converts handwriting to text.';
+  notice('info',msg);
+}
 function u8b64(u8){let s='';const C=0x8000;for(let i=0;i<u8.length;i+=C)s+=String.fromCharCode.apply(null,u8.subarray(i,i+C));return btoa(s);}
 function b64u8(b){const s=atob(b);const u=new Uint8Array(s.length);for(let i=0;i<s.length;i++)u[i]=s.charCodeAt(i);return u;}
 // optional passphrase encryption for shared files (offline, Web Crypto, PBKDF2 + AES-GCM)
@@ -1141,6 +1154,9 @@ $('#btnImportPack').addEventListener('click',()=>{
 });
 $('#sbBtn').addEventListener('click',()=>$('#sbInfo').classList.toggle('hidden'));
 $('#pentipX').addEventListener('click',()=>{$('#pentip').classList.add('hidden');try{localStorage.setItem('gmsfm:pentipDismissed','1')}catch(e){}});
+// tap the per-field pen marker for platform-specific handwriting guidance
+document.addEventListener('click',e=>{if(e.target.closest('.penhint')){e.preventDefault();showHandwritingHelp();}});
+document.addEventListener('keydown',e=>{if((e.key==='Enter'||e.key===' ')&&e.target.classList&&e.target.classList.contains('penhint')){e.preventDefault();showHandwritingHelp();}});
 // handwriting affordance only on pen/touch-capable devices (stylus tablets, iPads, Windows touch/pen)
 function markPenCapable(){document.body.classList.add('pen-capable');}
 if(navigator.maxTouchPoints>0||(window.matchMedia&&window.matchMedia('(any-pointer: coarse)').matches))markPenCapable();

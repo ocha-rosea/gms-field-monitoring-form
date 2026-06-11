@@ -58,11 +58,12 @@ See [PLAN.md](PLAN.md) for the architecture and roadmap of the multi-location, r
 
 Every note field is a standard text box, so on a stylus device monitors can **write by hand directly into any field and the device converts it to text**, fully offline, with no app changes. This is the recommended approach: it keeps the stored value as plain text (which the GMS cells require), needs no model download, and works with no network. The app deliberately does not bundle a handwriting recognition engine (a capable offline model would add tens of MB and is unreliable on field handwriting) and cannot use a cloud recognizer (the Content-Security-Policy blocks it).
 
-The ✎ marker that signals a handwriting field only appears on **pen or touch-capable devices** (stylus tablets, iPads, Windows touch/pen devices); it is hidden on mouse-only desktops where there is no pen.
+The ✎ marker on a text field appears only on **pen or touch-capable devices**; it is hidden on mouse-only desktops. Tapping it shows device-specific guidance:
+- **iPad + Apple Pencil**: write directly into the box; iPadOS Scribble converts it (Settings → Apple Pencil → Scribble).
+- **Samsung / Android with stylus**: write directly into the box (Settings → Advanced features → S Pen → Pen to text).
+- **Windows touch/pen**: browsers do not auto-convert, so open the **touch keyboard** from the taskbar, switch to its **handwriting (pen) panel**, and write into the focused field; Windows converts it to text.
 
-To enable it on issued tablets:
-- **Samsung / Android with stylus**: Settings → Advanced features → S Pen → enable "Pen to text" (or "Direct pen input"), then write into any text field.
-- **iPad + Apple Pencil**: Settings → Apple Pencil → turn on **Scribble**, then write into any text field.
+The app does not ship its own recognition engine. The browser's on-device Handwriting Recognition API (`navigator.createHandwritingRecognizer`) would allow an in-app pad, but it is unavailable on Windows desktop browsers, so guidance to the OS handwriting input is used instead.
 
 ## Notes / limits
 
