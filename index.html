@@ -6,9 +6,12 @@
 <title>GMS Field Monitoring Form</title>
 <!-- Browser-enforced guarantee that no data can be sent anywhere:
      only same-origin resources may load, and no outbound connections beyond the page's own origin are possible. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline'; worker-src 'self'; manifest-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'none'">
 <!-- OCHA primary typeface: Roboto, self-hosted (no third-party requests; falls back to Arial if unavailable) -->
 <link rel="stylesheet" href="assets/fonts/fonts.css">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#009edb">
+<link rel="icon" href="assets/icon-192.png">
 <style>
 /* OCHA brand palette — UN Blue primary, flat design, no gradients */
 :root{
@@ -175,7 +178,7 @@ footer .bar{display:flex;justify-content:center}
       <div class="stepcard">
         <img src="assets/icons/Smartphone.svg" alt="" onerror="this.style.display='none'">
         <h3><span class="n">2</span> Load</h3>
-        <p>Open this page on a phone, tablet or laptop and drop the file in. Once open, it keeps working with no connection.</p>
+        <p>Open this page on a phone, tablet or laptop and drop the file in. After the first visit the page opens even with no connection, and you can add it to your home screen.</p>
       </div>
       <div class="stepcard">
         <img src="assets/icons/Monitoring.svg" alt="" onerror="this.style.display='none'">
@@ -212,7 +215,7 @@ footer .bar{display:flex;justify-content:center}
   <div id="sbInfo" class="hidden">
     <ul>
       <li><b>Nothing is sent anywhere.</b> Everything you type is kept only in this browser, on this device. The app has no server. The only output is the Excel file you download and upload to OneGMS yourself.</li>
-      <li><b>Refreshing or closing the page is safe.</b> A draft is saved automatically on this device after every change. Reopen the page, load the same template file, and your entries are restored.</li>
+      <li><b>Refreshing or closing the page is safe.</b> A draft is saved automatically on this device after every change. Reopen the page (it loads even with no connection after the first visit), load the same template file, and your entries are restored.</li>
       <li><b>Changing device or browser?</b> Use <b>Export draft</b> to save your entries as a small file, and <b>Import draft</b> on the other device. The generated Excel also carries all your answers, so re-loading it restores them too.</li>
       <li><b>The draft stays until</b> you press <b>Discard draft</b> or clear this browser's site data. Private/incognito windows forget drafts when closed, so avoid them for field work.</li>
     </ul>
@@ -1097,6 +1100,9 @@ function flushDraft(){
 }
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')flushDraft()});
 window.addEventListener('pagehide',flushDraft);
+// offline support: after the first online visit the page loads with no connection
+if('serviceWorker' in navigator&&location.protocol!=='file:')
+  navigator.serviceWorker.register('sw.js').catch(()=>{});
 
 // test hook (no UI impact)
 window.__gms={WB,get state(){return state},set state(s){state=s},loadBuffer:async(buf,name)=>{await parseXlsx(buf,name);state={};renderForm()},
