@@ -34,6 +34,12 @@ Styled with the official OCHA brand palette (UN Blue `#009edb` for all blues; fl
 
 The mandatory-field list is the `REQUIRED` set near the top of the script in `index.html`; add or remove `fld_*` names there to change what is enforced.
 
+## Offline use
+
+A service worker (`sw.js`) caches the page and all assets on the first online visit. After that the app opens with **no connection at all**, survives closed tabs and device restarts, and can be added to the home screen (Android and iOS) so it launches full screen like an app. Drafts in local storage work the same offline.
+
+Update strategy for new deployments: the page itself is fetched **network-first**, so an online user always gets the latest deployment immediately, while an offline user gets the cached copy. Static assets use **stale-while-revalidate** (served instantly from cache, refreshed in the background when online). Bump `CACHE` in `sw.js` only when the precached file list changes; the new worker deletes all older caches on activation.
+
 ## Security and privacy
 
 All parsing, form filling and Excel generation happen in the browser; the app has no server, no analytics and no cookies. A Content-Security-Policy meta tag makes this browser-enforced: only same-origin resources may load and outbound connections to any other origin are refused, so even a future bug or a malicious workbook could not send data anywhere. Drafts are stored unencrypted in the browser's localStorage on the device; on shared computers, press Discard draft when done. The only network traffic is serving the page itself from GitHub Pages and the user's own upload to OneGMS.
