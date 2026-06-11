@@ -1161,9 +1161,25 @@ function flushDraft(){
 }
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')flushDraft()});
 window.addEventListener('pagehide',flushDraft);
-// offline support: after the first online visit the page loads with no connection
-if('serviceWorker' in navigator&&location.protocol!=='file:')
-  navigator.serviceWorker.register('sw.js').catch(()=>{});
+// offline support + auto-update: register the worker, and when a new version takes
+// control (after a deploy), reload once so users always get the latest app.
+if('serviceWorker' in navigator&&location.protocol!=='file:'){
+  if(navigator.serviceWorker.controller){
+    let refreshing=false;
+    navigator.serviceWorker.addEventListener('controllerchange',()=>{
+      if(refreshing)return;refreshing=true;try{flushDraft();}catch(e){}location.reload();
+    });
+  }
+  navigator.serviceWorker.register('sw.js').then(reg=>{
+    reg.addEventListener('updatefound',()=>{
+      const sw=reg.installing;if(!sw)return;
+      sw.addEventListener('statechange',()=>{
+        if(sw.state==='installed'&&navigator.serviceWorker.controller)
+          notice('info','Updating to the latest version…');
+      });
+    });
+  }).catch(()=>{});
+}
 // startup: open the records home if there are already saved reports
 (async function(){
   try{await Store.open();Store.persist();
