@@ -4,21 +4,18 @@
 
 A web form for filling the OneGMS **Field Site Monitoring (FSM) report template** in the field, and regenerating the exact Excel file for upload back to OneGMS.
 
-Everything is in [index.html](index.html): no server, no install, no data leaves the device.
+It runs entirely in your browser: no server, no install, and no data leaves the device.
 
 ## How it works
 
 1. Export the monitoring template for your project from OneGMS (`Monitoring-<project>_<date>.xlsx`).
-2. Open `index.html` in any modern browser (double-click the file, or visit the hosted page once; it keeps working offline afterwards).
-3. Drop the exported .xlsx onto the page. The form is built **from the file itself**:
-   - fields are located through the `fld_*` named ranges GMS uses to read the upload;
-   - dropdown options come from the template's own data-validation lists;
-   - project info, indicators and activities are pre-filled from the GMS export.
-4. Fill the form. Each section is a short step-by-step wizard (numbered dots = sub-sections; green = complete). Fields marked __*__ are mandatory: the form does not move forward (next step, dot-jump, or next tab) until the current step's mandatory fields are filled; going back is always allowed. Tab badges show how many mandatory fields remain per section. A draft autosaves in the browser after every keystroke; you can also **Export draft** to a JSON file and **Import** it on another machine.
-5. Click **Generate Excel for GMS**. The download is the *original* workbook, byte-identical except for your answers injected into the GMS-named cells, so OneGMS accepts it exactly like a hand-filled template.
-6. Open the file once in Excel (scores on the `Rep Templ.Scoring` sheet recalculate automatically on open), check it, upload to OneGMS.
+2. Open the app at the link above. Open it once while online; afterwards it works offline, and you can add it to your home screen. It opens on your **records home**.
+3. Choose **New report**, pick **one** or **multiple locations**, and load the exported template. The form is built from the file itself: fields from the `fld_*` named ranges GMS reads, dropdowns from the template's own lists, and project info, indicators and activities pre-filled from the export.
+4. Fill the form in short guided steps. Fields marked __*__ are mandatory and must be completed before moving on. Entries autosave on the device, and the report stays on your records home so you can reopen and continue it **without the original file**.
+5. **Generate Excel for GMS** fills your answers into the original template and saves a timestamped copy to the report.
+6. Open that file once in Excel to refresh the scores, check it, and upload to OneGMS.
 
-Because the form adapts to whatever file is dropped in, it works for any project and any CBPF country export that uses the standard FSM template, and re-loading an already-filled report restores its values for editing.
+The form adapts to whatever template you load, so it works for any project and any CBPF country export that uses the standard FSM template.
 
 ## Records and multiple locations
 
