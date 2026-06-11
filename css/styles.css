@@ -147,6 +147,15 @@ footer .bar{display:flex;justify-content:center}
 .notice.warn{background:var(--red-bg);border:1px solid var(--red)}
 .notice.info{background:var(--blue-bg);border:1px solid var(--blue-pale)}
 .hidden{display:none!important}
+.modal-ov{position:fixed;inset:0;background:rgba(0,46,110,.45);display:flex;align-items:center;justify-content:center;z-index:100;padding:16px}
+.modal{background:#fff;border-radius:8px;max-width:440px;width:100%;padding:18px 18px 16px;box-shadow:0 10px 34px rgba(0,0,0,.28)}
+.modal-t{font-size:16px;font-weight:600;color:var(--navy);margin-bottom:8px}
+.modal-m{font-size:14px;color:var(--g-dark);line-height:1.5;white-space:pre-wrap;margin-bottom:12px}
+.modal-in{width:100%;padding:9px 10px;border:1px solid var(--g-mid);border-radius:4px;font:inherit;font-size:16px;margin-bottom:14px}
+.modal-in:focus{outline:2px solid var(--un);border-color:var(--un)}
+.modal-btns{display:flex;justify-content:flex-end;gap:8px}
+.btn.danger{background:var(--red);border-color:var(--red)}
+.btn.danger:hover{background:var(--red-aaa);border-color:var(--red-aaa)}
 @media(max-width:680px){
   header .hwrap{flex-wrap:wrap;gap:6px 14px;padding:10px 14px 8px}
   #logo{height:40px}

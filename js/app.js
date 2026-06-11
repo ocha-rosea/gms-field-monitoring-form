@@ -438,6 +438,34 @@ function buildTables(){
 /* ============================================================ render ==== */
 const $=s=>document.querySelector(s);
 function el(tag,attrs,html){const e=document.createElement(tag);if(attrs)for(const k in attrs)e.setAttribute(k,attrs[k]);if(html!=null)e.innerHTML=html;return e}
+// styled in-app dialogs (replace native alert/confirm/prompt)
+function uiModal(o){
+  return new Promise(resolve=>{
+    const ov=el('div',{class:'modal-ov'}),box=el('div',{class:'modal'});
+    if(o.title)box.appendChild(el('div',{class:'modal-t'},encXml(o.title)));
+    if(o.message){const m=el('div',{class:'modal-m'});m.textContent=o.message;box.appendChild(m);}
+    let input=null;
+    if(o.input){input=el('input',{type:o.password?'password':'text',class:'modal-in'});
+      if(o.placeholder)input.placeholder=o.placeholder;if(o.value)input.value=o.value;box.appendChild(input);}
+    const btns=el('div',{class:'modal-btns'});
+    const cancel=el('button',{class:'btn ghost'},o.cancelText||'Cancel');
+    const ok=el('button',{class:'btn'+(o.danger?' danger':'')},o.okText||'OK');
+    function close(v){ov.remove();document.removeEventListener('keydown',onKey);resolve(v);}
+    const cancelVal=o.input?null:false;
+    cancel.addEventListener('click',()=>close(cancelVal));
+    ok.addEventListener('click',()=>close(o.input?input.value:true));
+    if(o.cancelText!==null)btns.appendChild(cancel);
+    btns.appendChild(ok);box.appendChild(btns);ov.appendChild(box);
+    function onKey(e){if(e.key==='Escape')close(cancelVal);else if(e.key==='Enter'&&(o.input||o.cancelText===null))close(o.input?input.value:true);}
+    document.addEventListener('keydown',onKey);
+    ov.addEventListener('click',e=>{if(e.target===ov)close(cancelVal);});
+    document.body.appendChild(ov);
+    setTimeout(()=>(input||ok).focus(),30);
+  });
+}
+const uiConfirm=(message,o)=>uiModal(Object.assign({message,title:'Please confirm',okText:'OK'},o||{}));
+const uiPrompt=(message,o)=>uiModal(Object.assign({message,input:true,okText:'OK'},o||{}));
+const uiAlert=(message,o)=>uiModal(Object.assign({message,cancelText:null,okText:'OK'},o||{}));
 
 let RCTX={si:0,gi:0}; // section/step context during render
 function registerInput(container,{key,sheet,ref,type,label,options,ph,pre,rubric}){
@@ -818,7 +846,7 @@ async function generate(){
   const missAll=missingRequired();
   if(missAll.length){
     const list=missAll.slice(0,12).map(m=>'• '+m.label).join('\n');
-    if(!confirm(missAll.length+' mandatory field(s) are still empty:\n\n'+list+(missAll.length>12?'\n…':'')+'\n\nGenerate the Excel anyway?'))return;
+    if(!(await uiConfirm(missAll.length+' mandatory field(s) are still empty:\n\n'+list+(missAll.length>12?'\n…':'')+'\n\nGenerate the Excel anyway?',{title:'Mandatory fields incomplete',okText:'Generate anyway'})))return;
   }
   const edits=collectEdits();
   const bySheet={};
@@ -930,14 +958,14 @@ async function renderProjectView(){
     const acts=el('div',{class:'rc-actions'});
     const open=el('button',{class:'btn sm'},'Open');open.addEventListener('click',()=>openLocation(loc));acts.appendChild(open);
     const del=el('button',{class:'btn sm ghost'},'Delete');
-    del.addEventListener('click',async()=>{if(confirm('Delete this location and its entries?')){await Store.deleteLocation(loc.id);renderProjectView();}});
+    del.addEventListener('click',async()=>{if(await uiConfirm('Delete this location and its entries?',{title:'Delete location',okText:'Delete',danger:true})){await Store.deleteLocation(loc.id);renderProjectView();}});
     acts.appendChild(del);
     card.appendChild(acts);list.appendChild(card);
   }
 }
 function openLocation(loc){CURLOC=loc;state=Object.assign({},loc.formState||{});renderForm();}
 async function addLocation(){
-  const name=(prompt('Location name (the site to visit):')||'').trim();
+  const name=((await uiPrompt('Name the site to visit. It identifies this location when teams merge their entries.',{title:'Add location',placeholder:'e.g. Wamba'}))||'').trim();
   if(!name)return;
   const loc={id:newId(),projectKey:CURPROJ.projectKey,locationName:name,
     formState:{fld_visitLocation:name},status:'planned',planned:true};
@@ -985,7 +1013,9 @@ async function exportFieldPack(){
       filename:CURPROJ.filename,mode:CURPROJ.mode,templateB64:u8b64(CURPROJ.templateBytes),
       locations:locs.map(l=>({id:l.id,projectKey:l.projectKey,locationName:l.locationName,formState:l.formState,
         status:l.status,planned:l.planned,author:l.author,updatedAt:l.updatedAt}))};
-    const pass=(prompt('Optional passphrase to encrypt this field pack.\nLeave blank for no encryption. Share the passphrase with your team through a separate channel.')||'').trim();
+    const pass0=await uiPrompt('Leave blank for no encryption. If you set one, share the passphrase with your team through a separate channel.',{title:'Encrypt field pack (optional)',placeholder:'Passphrase',password:true});
+    if(pass0===null)return;
+    const pass=pass0.trim();
     let payload=bundle,enc='';
     if(pass){payload=await encryptObj(bundle,pass);enc='-encrypted';}
     const blob=new Blob([JSON.stringify(payload)],{type:'application/json'});
@@ -997,7 +1027,7 @@ async function exportFieldPack(){
 }
 async function importFieldPack(data){
   if(data&&data.kind==='fieldpack-enc'){
-    const pass=(prompt('This field pack is encrypted. Enter the passphrase:')||'').trim();
+    const pass=((await uiPrompt('This field pack is encrypted. Enter the passphrase to open it.',{title:'Encrypted field pack',placeholder:'Passphrase',password:true}))||'').trim();
     if(!pass)throw new Error('Passphrase required');
     try{data=await decryptObj(data,pass);}catch(e){throw new Error('Wrong passphrase or corrupted file');}
   }
@@ -1090,7 +1120,7 @@ async function renderRecords(){
       acts.appendChild(mk);
     }
     const del=el('button',{class:'btn sm ghost'},'Delete');
-    del.addEventListener('click',async()=>{if(confirm('Delete this report and its saved files from this device?')){await Store.deleteProject(p.projectKey);renderRecords();}});
+    del.addEventListener('click',async()=>{if(await uiConfirm('Delete this report and its saved files from this device?',{title:'Delete report',okText:'Delete',danger:true})){await Store.deleteProject(p.projectKey);renderRecords();}});
     acts.appendChild(del);
     card.appendChild(acts);list.appendChild(card);
   }
@@ -1117,7 +1147,7 @@ $('#btnImport').addEventListener('click',()=>{
   inp.click();
 });
 $('#btnReset').addEventListener('click',async()=>{
-  if(!confirm('Discard your entries for this report and start from the template values?'))return;
+  if(!(await uiConfirm('Discard your entries for this report and start from the template values?',{title:'Discard entries',okText:'Discard',danger:true})))return;
   state={};if(CURLOC){CURLOC.formState={};CURLOC.status='draft';await Store.putLocation(CURLOC);}renderForm();
 });
 $('#btnNew').addEventListener('click',()=>backFromForm());
