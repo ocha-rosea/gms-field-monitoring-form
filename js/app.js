@@ -644,9 +644,13 @@ function renderForm(){
   activateTab(0);showStep(0,0);
   $('#landing').classList.add('hidden');
   $('#records').classList.add('hidden');
+  $('#project').classList.add('hidden');
+  $('#btnNew').textContent=(CURPROJ&&CURPROJ.mode==='multi')?'Back to locations':'All reports';
   tabs.classList.remove('hidden');main.classList.remove('hidden');
   $('#storagebadge').classList.remove('hidden');
   $('#topbar').classList.remove('hidden');
+  // in multi mode, the final Excel is generated only from the consolidation, not per location
+  $('#btnGen').classList.toggle('hidden', !!(CURPROJ&&CURPROJ.mode==='multi'&&!(CURLOC&&CURLOC.consolidated)));
   $('#chips').classList.remove('hidden');$('#hdractions').classList.remove('hidden');
   const chips=$('#chips');chips.innerHTML='';
   for(const [lab,val] of [['Project',namedV('fld_chfProjectCode')],['Partner',namedV('fld_organizationName')],
@@ -743,12 +747,15 @@ function onStateChange(){
   saveTimer=setTimeout(()=>{
     const t=$('#sbTime'),b=$('#sbBtn');
     if(!CURLOC)return;
+    const ok=()=>{if(t&&Object.keys(state).length){t.textContent='saved on this device '+new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});b.classList.remove('warn');}};
+    const fail=()=>{if(t){t.textContent='could not save on this device. Use Export draft to keep your work';b.classList.add('warn');}};
+    if(CURLOC.consolidated){if(CURPROJ){CURPROJ.consolidationState=state;Store.putProject(CURPROJ).then(ok).catch(fail);}return;}
     CURLOC.formState=state;
     CURLOC.status=missAll.length?'draft':'complete';
     Store.putLocation(CURLOC).then(()=>{
       if(CURPROJ&&CURPROJ.status!=='generated'&&CURPROJ.status!=='uploaded'){CURPROJ.status=CURLOC.status;Store.putProject(CURPROJ);}
-      if(t&&Object.keys(state).length){t.textContent='saved on this device '+new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});b.classList.remove('warn');}
-    }).catch(()=>{if(t){t.textContent='could not save on this device. Use Export draft to keep your work';b.classList.add('warn');}});
+      ok();
+    }).catch(fail);
   },400);
 }
 
@@ -852,18 +859,17 @@ async function loadFile(file){
     const code=namedV('fld_chfProjectCode')||file.name.replace(/\.xlsx$/i,'');
     const projectKey=code+'|'+(await hashBytes(templateBytes));
     let proj=await Store.getProject(projectKey);
-    if(proj){
-      const locs=await Store.listLocations(projectKey);
-      CURLOC=locs[0]||{id:newId(),projectKey,locationName:namedV('fld_visitLocation')||'',formState:{},status:'draft'};
-      notice('info','Reopened a saved report. Your earlier entries were restored.');
-    }else{
+    const mode=(document.querySelector('input[name=repmode]:checked')||{}).value||'single';
+    if(!proj){
       proj={projectKey,projectCode:namedV('fld_chfProjectCode')||'',partner:namedV('fld_organizationName')||'',
-        country:namedV('fld_visitCountry')||'',filename:file.name,templateBytes,mode:'single',status:'draft'};
+        country:namedV('fld_visitCountry')||'',filename:file.name,templateBytes,mode,status:'draft'};
       await Store.putProject(proj);
-      CURLOC={id:newId(),projectKey,locationName:namedV('fld_visitLocation')||'',formState:{},status:'draft'};
-      await Store.putLocation(CURLOC);
     }
     CURPROJ=proj;
+    if(proj.mode==='multi'){CURLOC=null;await enterProjectView();return;}
+    const locs=await Store.listLocations(projectKey);
+    if(locs[0]){CURLOC=locs[0];notice('info','Reopened a saved report. Your earlier entries were restored.');}
+    else{CURLOC={id:newId(),projectKey,locationName:namedV('fld_visitLocation')||'',formState:{},status:'draft'};await Store.putLocation(CURLOC);}
     state=Object.assign({},CURLOC.formState||{});
     renderForm();
   }catch(err){notice('warn','Could not read file: '+encXml(err.message),true);console.error(err)}
@@ -873,17 +879,141 @@ async function openProject(projectKey){
     const proj=await Store.getProject(projectKey);
     if(!proj){notice('warn','Report not found.');return;}
     await parseXlsx(toAB(proj.templateBytes),proj.filename||'template.xlsx');
+    CURPROJ=proj;
+    if(proj.mode==='multi'){CURLOC=null;await enterProjectView();return;}
     const locs=await Store.listLocations(projectKey);
     CURLOC=locs[0]||{id:newId(),projectKey,locationName:'',formState:{},status:'draft'};
     if(!locs[0])await Store.putLocation(CURLOC);
-    CURPROJ=proj;
     state=Object.assign({},CURLOC.formState||{});
     renderForm();
   }catch(err){notice('warn','Could not open report: '+encXml(err.message),true);console.error(err)}
 }
 function hideAll(){
-  for(const id of ['landing','records','tabs','form','topbar','storagebadge','chips','hdractions'])
+  for(const id of ['landing','records','project','tabs','form','topbar','storagebadge','chips','hdractions'])
     $('#'+id).classList.add('hidden');
+}
+/* ---- multi-location project view ---- */
+async function enterProjectView(){
+  hideAll();
+  $('#hdrsub').textContent='Multiple-location report';
+  await renderProjectView();
+  $('#project').classList.remove('hidden');
+  window.scrollTo(0,0);
+}
+async function showProject(projectKey){
+  const proj=await Store.getProject(projectKey);if(!proj){notice('warn','Report not found.');return;}
+  await parseXlsx(toAB(proj.templateBytes),proj.filename||'template.xlsx');
+  CURPROJ=proj;CURLOC=null;
+  await enterProjectView();
+}
+async function renderProjectView(){
+  const p=CURPROJ;
+  $('#projTitle').textContent=p.projectCode||p.filename||'Report';
+  const locs=await Store.listLocations(p.projectKey);
+  const done=locs.filter(l=>l.status==='complete').length;
+  $('#projMeta').innerHTML='<b>Multiple-location report.</b> '+
+    [p.partner&&('Partner: '+encXml(p.partner)),p.country&&('Country: '+encXml(p.country))].filter(Boolean).join(' &middot; ')+
+    ((p.partner||p.country)?' &middot; ':'')+done+' of '+locs.length+' location(s) complete. '+
+    'Share with your team using <b>Export field pack</b> (internal channels only).';
+  const list=$('#loclist');list.innerHTML='';
+  if(!locs.length){list.innerHTML='<div class="rec-empty">No locations yet. Choose <b>Add location</b> to plan the sites to visit.</div>';return;}
+  for(const loc of locs){
+    const card=el('div',{class:'reccard'});
+    const main=el('div',{class:'rc-main'});
+    main.innerHTML='<div class="rc-code">'+encXml(loc.locationName||'(unnamed location)')+
+      ' <span class="rc-status '+(loc.status||'planned')+'">'+encXml(loc.status||'planned')+'</span></div>'+
+      '<div class="rc-meta">'+(loc.author?('By '+encXml(loc.author)+' &middot; '):'')+
+      (loc.updatedAt?('Updated '+new Date(loc.updatedAt).toLocaleString()):'not started')+'</div>';
+    card.appendChild(main);
+    const acts=el('div',{class:'rc-actions'});
+    const open=el('button',{class:'btn sm'},'Open');open.addEventListener('click',()=>openLocation(loc));acts.appendChild(open);
+    const del=el('button',{class:'btn sm ghost'},'Delete');
+    del.addEventListener('click',async()=>{if(confirm('Delete this location and its entries?')){await Store.deleteLocation(loc.id);renderProjectView();}});
+    acts.appendChild(del);
+    card.appendChild(acts);list.appendChild(card);
+  }
+}
+function openLocation(loc){CURLOC=loc;state=Object.assign({},loc.formState||{});renderForm();}
+async function addLocation(){
+  const name=(prompt('Location name (the site to visit):')||'').trim();
+  if(!name)return;
+  const loc={id:newId(),projectKey:CURPROJ.projectKey,locationName:name,
+    formState:{fld_visitLocation:name},status:'planned',planned:true};
+  await Store.putLocation(loc);
+  renderProjectView();
+}
+function backFromForm(){flushDraft();if(CURPROJ&&CURPROJ.mode==='multi')enterProjectView();else showHome();}
+function u8b64(u8){let s='';const C=0x8000;for(let i=0;i<u8.length;i+=C)s+=String.fromCharCode.apply(null,u8.subarray(i,i+C));return btoa(s);}
+function b64u8(b){const s=atob(b);const u=new Uint8Array(s.length);for(let i=0;i<s.length;i++)u[i]=s.charCodeAt(i);return u;}
+async function exportFieldPack(){
+  if(!CURPROJ){notice('warn','Open a report first.');return;}
+  try{
+    const locs=await Store.listLocations(CURPROJ.projectKey);
+    const bundle={app:'gms-field-monitoring-form',kind:'fieldpack',v:1,exportedAt:new Date().toISOString(),
+      projectKey:CURPROJ.projectKey,projectCode:CURPROJ.projectCode,partner:CURPROJ.partner,country:CURPROJ.country,
+      filename:CURPROJ.filename,mode:CURPROJ.mode,templateB64:u8b64(CURPROJ.templateBytes),
+      locations:locs.map(l=>({id:l.id,projectKey:l.projectKey,locationName:l.locationName,formState:l.formState,
+        status:l.status,planned:l.planned,author:l.author,updatedAt:l.updatedAt}))};
+    const blob=new Blob([JSON.stringify(bundle)],{type:'application/json'});
+    const safe=(CURPROJ.projectCode||'report').replace(/[^\w.-]+/g,'_');
+    const a=el('a',{href:URL.createObjectURL(blob),download:'fieldpack-'+safe+'.json'});
+    document.body.appendChild(a);a.click();a.remove();
+    notice('ok','Field pack exported. Share it through internal channels only.');
+  }catch(e){notice('warn','Export failed: '+encXml(e.message),true);console.error(e);}
+}
+async function importFieldPack(data){
+  if(!data||data.kind!=='fieldpack')throw new Error('Not a field pack file');
+  let proj=await Store.getProject(data.projectKey);
+  if(!proj){
+    proj={projectKey:data.projectKey,projectCode:data.projectCode||'',partner:data.partner||'',country:data.country||'',
+      filename:data.filename||'template.xlsx',templateBytes:b64u8(data.templateB64),mode:data.mode||'multi',status:'draft'};
+    await Store.putProject(proj);
+  }
+  const existing={};(await Store.listLocations(data.projectKey)).forEach(l=>existing[l.id]=l);
+  let added=0,updated=0;
+  for(const bl of (data.locations||[])){
+    const ex=existing[bl.id];
+    if(!ex){await Store.putLocation(bl);added++;}
+    else if((bl.updatedAt||'')>(ex.updatedAt||'')){await Store.putLocation(Object.assign({},ex,bl));updated++;}
+  }
+  return {added,updated};
+}
+function fieldMeta(key){
+  if(!fieldMeta._m){fieldMeta._m={};for(const sec of CATALOG)for(const g of sec.groups)if(g.fields)for(const f of g.fields)fieldMeta._m[f.n]={type:f.type};}
+  return fieldMeta._m[key];
+}
+// Aggregate location form-states into one consolidated state (field-type aware).
+// Numbers sum; free text concatenates with LocationName_ prefix; selects/dates take first;
+// scores are never auto-filled (the reviewer sets the single official score).
+function aggregateLocations(locs){
+  const out={};const keys=new Set();
+  locs.forEach(l=>Object.keys(l.formState||{}).forEach(k=>keys.add(k)));
+  for(const key of keys){
+    const vals=locs.map(l=>({name:l.locationName||l.id,v:(l.formState||{})[key]})).filter(x=>x.v!=null&&String(x.v).trim()!=='');
+    if(!vals.length)continue;
+    const t=(fieldMeta(key)||{}).type;
+    if(t==='score')continue;
+    const allNum=vals.every(x=>/^-?\d+(\.\d+)?$/.test(String(x.v).trim()));
+    if(t==='number'||(!t&&allNum&&key.indexOf('cell|')===0)){
+      out[key]=String(vals.reduce((a,x)=>a+parseFloat(x.v),0));
+    }else if(t==='select'||t==='date'||t==='daterange'){
+      out[key]=vals[0].v;
+    }else{
+      out[key]=vals.map(x=>x.name+'_: '+x.v).join('\n');
+    }
+  }
+  return out;
+}
+async function consolidateAndReview(){
+  if(!CURPROJ)return;
+  const locs=(await Store.listLocations(CURPROJ.projectKey)).filter(l=>l.status&&l.status!=='planned');
+  if(!locs.length){notice('warn','No started locations to consolidate yet. Open and fill at least one location first.');return;}
+  let consolidated=aggregateLocations(locs);
+  if(CURPROJ.consolidationState)consolidated=Object.assign(consolidated,CURPROJ.consolidationState);
+  CURLOC={id:'__consolidated__',projectKey:CURPROJ.projectKey,locationName:'Consolidated',formState:consolidated,status:'draft',consolidated:true};
+  state=Object.assign({},consolidated);
+  renderForm();
+  notice('info','Consolidated from '+locs.length+' location(s). Numbers were summed and text combined with location prefixes. Review and edit anything, set the scores, then Generate the final Excel.');
 }
 async function showHome(){
   flushDraft();
@@ -951,8 +1081,12 @@ $('#btnReset').addEventListener('click',async()=>{
   if(!confirm('Discard your entries for this report and start from the template values?'))return;
   state={};if(CURLOC){CURLOC.formState={};CURLOC.status='draft';await Store.putLocation(CURLOC);}renderForm();
 });
-$('#btnNew').addEventListener('click',()=>showHome());
+$('#btnNew').addEventListener('click',()=>backFromForm());
 $('#btnNewReport').addEventListener('click',()=>showLanding());
+$('#btnProjBack').addEventListener('click',()=>showHome());
+$('#btnAddLoc').addEventListener('click',()=>addLocation());
+$('#btnFieldPack').addEventListener('click',()=>exportFieldPack());
+$('#btnConsolidate').addEventListener('click',()=>consolidateAndReview());
 $('#btnBackupExport').addEventListener('click',async()=>{
   try{const data=await Store.exportAll();
     const blob=new Blob([JSON.stringify(data)],{type:'application/json'});
@@ -970,6 +1104,15 @@ $('#btnBackupImport').addEventListener('click',()=>{
   });
   inp.click();
 });
+$('#btnImportPack').addEventListener('click',()=>{
+  const inp=el('input',{type:'file',accept:'.json'});
+  inp.addEventListener('change',async()=>{
+    try{const data=JSON.parse(await inp.files[0].text());const res=await importFieldPack(data);await renderRecords();
+      notice('ok','Field pack imported: '+res.added+' location(s) added, '+res.updated+' updated.');}
+    catch(e){notice('warn','Invalid field pack: '+encXml(e.message),true);console.error(e);}
+  });
+  inp.click();
+});
 $('#sbBtn').addEventListener('click',()=>$('#sbInfo').classList.toggle('hidden'));
 // data-loss disclaimer: dismissible, remembered so it does not nag returning users
 (function(){
@@ -984,8 +1127,10 @@ $('#sbBtn').addEventListener('click',()=>$('#sbInfo').classList.toggle('hidden')
 function flushDraft(){
   if(!CURLOC)return;
   clearTimeout(saveTimer);
-  CURLOC.formState=state;
-  try{Store.putLocation(CURLOC);if(CURPROJ)Store.putProject(CURPROJ);}catch(e){}
+  try{
+    if(CURLOC.consolidated){if(CURPROJ){CURPROJ.consolidationState=state;Store.putProject(CURPROJ);}}
+    else{CURLOC.formState=state;Store.putLocation(CURLOC);if(CURPROJ)Store.putProject(CURPROJ);}
+  }catch(e){}
 }
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')flushDraft()});
 window.addEventListener('pagehide',flushDraft);
@@ -1003,4 +1148,6 @@ if('serviceWorker' in navigator&&location.protocol!=='file:')
 // test hook (no UI impact)
 window.__gms={WB,get state(){return state},set state(s){state=s},loadBuffer:async(buf,name)=>{await parseXlsx(buf,name);CURPROJ=null;CURLOC=null;state={};renderForm()},
   collectEdits,generate,setVal:(k,v)=>{state[k]=v;onStateChange()},inputs:()=>inputsIndex,cellV,namedV,
-  openProject,showHome,renderRecords,loadFileObj:loadFile,get curproj(){return CURPROJ},get curloc(){return CURLOC}};
+  openProject,showHome,renderRecords,loadFileObj:loadFile,showProject,enterProjectView,addLocation,openLocation,
+  exportFieldPack,importFieldPack,consolidateAndReview,
+  get curproj(){return CURPROJ},get curloc(){return CURLOC}};

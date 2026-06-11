@@ -26,7 +26,10 @@ header .sub{font-size:13.5px;color:var(--gray);margin-top:2px}
 .chips{display:flex;flex-wrap:wrap;gap:6px;max-width:880px;margin:0 auto;padding:4px 16px}
 .chip{background:var(--blue-bg);color:var(--blue-aaa);border-radius:3px;padding:3px 10px;font-size:13px}
 .headeractions{display:flex;gap:8px;flex-wrap:wrap;max-width:880px;margin:0 auto;padding:6px 16px 14px}
-#records{max-width:880px;margin:0 auto;padding:14px 12px 60px}
+#records,#project{max-width:880px;margin:0 auto;padding:14px 12px 60px}
+#modesel{font-size:13.5px;color:var(--g-dark);margin:16px 0 0;display:flex;gap:14px;flex-wrap:wrap;align-items:center}
+#modesel label{display:inline-flex;gap:5px;align-items:center;cursor:pointer}
+.rc-status.planned{background:#ece3f3;color:#733d96}
 .rec-head{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin:10px 0 8px}
 .rec-head h2{color:var(--navy);font-size:20px;margin:0}
 .rec-tools{display:flex;gap:8px;flex-wrap:wrap}

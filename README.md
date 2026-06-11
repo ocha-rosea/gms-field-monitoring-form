@@ -20,6 +20,12 @@ Everything is in [index.html](index.html): no server, no install, no data leaves
 
 Because the form adapts to whatever file is dropped in, it works for any project and any CBPF country export that uses the standard FSM template, and re-loading an already-filled report restores its values for editing.
 
+## Records and multiple locations
+
+The app opens on a **records home** listing your saved reports with their status (draft, complete, generated, uploaded). Reports are stored in the browser, so you can reopen and continue one **without the original file**, and re-download any generated Excel. Use **Export backup / Import backup** to move your whole records database between devices through internal channels.
+
+When starting a report you choose **one location** or **multiple locations**. A multiple-location report holds a list of locations (each can be planned up front), and different team members can fill different locations on their own devices. Share a project with **Export field pack** and merge contributions with **Import field pack** (locations merge by a stable id, so partial sets combine cleanly). **Consolidate & generate** then aggregates the locations (numbers summed, text combined with location prefixes, scores left for you to set), opens an editable review, and produces one timestamped final Excel for upload. The final Excel is always reviewed and edited in Excel before upload, which is the quality gate. See [PLAN.md](PLAN.md) for the full design.
+
 ## Why not just edit the Excel?
 
 The GMS template is sheet-protected, slow on small screens, and easy to corrupt with generic tools (openpyxl-style round-trips silently strip workbook internals). This app never rebuilds the workbook; it patches only the value of edited cells inside the original zip, preserving styles, protection, validations, named ranges, printer settings and metadata untouched.
