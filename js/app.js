@@ -1092,7 +1092,12 @@ async function showHome(){
   $('#records').classList.remove('hidden');
   window.scrollTo(0,0);
 }
-function showLanding(){hideAll();$('#landing').classList.remove('hidden');window.scrollTo(0,0);}
+async function showLanding(){
+  hideAll();
+  let has=false;try{has=(await Store.listProjects()).length>0;}catch(e){}
+  $('#btnLandingBack').classList.toggle('hidden',!has);
+  $('#landing').classList.remove('hidden');window.scrollTo(0,0);
+}
 async function renderRecords(){
   const list=$('#reclist');list.innerHTML='';
   let projects=[];try{projects=await Store.listProjects();}catch(e){console.error(e);}
@@ -1152,6 +1157,7 @@ $('#btnReset').addEventListener('click',async()=>{
 });
 $('#btnNew').addEventListener('click',()=>backFromForm());
 $('#btnNewReport').addEventListener('click',()=>showLanding());
+$('#btnLandingBack').addEventListener('click',()=>showHome());
 $('#btnProjBack').addEventListener('click',()=>showHome());
 $('#btnAddLoc').addEventListener('click',()=>addLocation());
 $('#btnFieldPack').addEventListener('click',()=>exportFieldPack());

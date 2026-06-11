@@ -46,6 +46,7 @@ header .sub{font-size:13.5px;color:var(--gray);margin-top:2px}
 .rc-status.uploaded{background:var(--green-bg);color:var(--green)}
 .rec-empty{text-align:center;color:var(--gray);padding:26px 12px;border:1px dashed var(--g-lt);border-radius:6px}
 #landing{max-width:880px;margin:0 auto;padding:0 12px 110px}
+.landing-nav{margin:12px 0 0}
 #disclaimer{display:flex;gap:11px;align-items:flex-start;background:#fff7e0;border:1px solid #ffc800;border-left:4px solid #f58220;border-radius:6px;padding:12px 12px 12px 14px;margin:18px 0 2px;font-size:13.5px;color:var(--ink);line-height:1.5}
 #disclaimer svg{flex:none;color:#cf3f0b;margin-top:1px}
 #disclaimer .dtext{flex:1}
