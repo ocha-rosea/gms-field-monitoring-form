@@ -7,11 +7,12 @@
    - Browsers re-check this file on each navigation; a changed CACHE version
      installs the new worker, which deletes all older caches on activation.
      Bump CACHE only when the precache list itself changes. */
-const CACHE = 'gms-fsm-v2';
+const CACHE = 'gms-fsm-v3';
 const PRECACHE = [
   './',
   'index.html',
   'css/styles.css',
+  'js/app.js',
   'manifest.webmanifest',
   'assets/fonts/fonts.css',
   'assets/fonts/roboto-300-latin.woff2',
